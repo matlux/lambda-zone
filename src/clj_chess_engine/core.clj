@@ -892,78 +892,10 @@
 ;; (play-game (initial-board) interactive-f random-f)
 ;;(rand-int 42)
 
-
-;; ----------------------- stats
-
-(defn write-file
-  "Writes a value to a file"
-  [value out-file]
-  (spit out-file "" :append false)
-  (with-open [out-data (clojure.java.io/writer out-file)]
-      (.write out-data (str value))))
-
-(defn read-file [in-file]
-  (with-open [rdr (clojure.java.io/reader in-file)]
-    (reduce conj [] (line-seq rdr))))
-
-
-(def database (atom {
-                     :contenders [{:login "Philip" :functions [{:id "daredevil" :function random-f :past-battles [{:against "superman" :scores [1 0] :color :white}]}]}
-                                  {:login "Nicholas" :functions [{:id "superman" :function random-f :past-battles []}]}
-                                  {:login "Steve" :functions [{:id "Wonderboy" :function random-f }]}
-                                  {:login "Bob" :functions [{:id "Wonderboy2" :function random-f }]}]}))
-
-(defn all-available-functions [db]
-  (for [{login :login fns :functions} (:contenders db)
-        {id :id fn :function battles :past-battles} fns
-        ]
-    {:login login :id id :fn fn :past-battles battles }
-    ))
-
-(defn all-available-function-matches [db]
-  (let [all-fns (all-available-functions db)]
-    (for [fn1 all-fns
-          fn2 all-fns
-          :when (and (not= fn1 fn2)
-                     ;(> 0 (compare (.toString fn1) (.toString fn2)))
-                     )] [fn1 fn2])))
-
-
-
-(defn select2functions [db]
-  (first (all-available-function-matches db)))
-
-(defn select-contender-by-fn [db f]
-  (for [{login :login fns :functions} (:contenders db)
-        {id :id fn :function battles :past-battles} fns
-        :when (= f fn)
-        ]
-    {:login login :id id :fn fn :past-battles battles }
-    ))
-
-
-
-(count (select2functions @database))
-
-(defn save [result]
-  (let [{s :score res :result bat :past-battles}  result
-        battles (if (nil? bat) [] bat)
-        ]
-    (swap! database (fn [db]
-                     (let [a 1] {
-                       :contenders [{:login "Philip" :functions [{:id "daredevil" :function random-f :past-battles (conj battles {:score s :result res})}]}
-                                    {:login "Nicholas" :functions [{:id "superman" :function random-f :past-battles []}]}
-                                    {:login "Steve" :functions [{:id "Wonderboy" :function random-f }]}
-                                    {:login "Bob" :functions [{:id "Wonderboy2" :function random-f }]}]})))
-    (write-file   @database "./score.txt")))
-
-(defn tournement []
-  (let [[{name1 :login f1 :fn id1 :id} {name2 :name f2 :fn id2 :id}] (select2functions @database)
-        result (play-game {:board (initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2})]
-    (save result)
-   (println result)
-   (recur)))
-
-
-(defn -main []
- (tournement))
+(defn wrapper-display-f [f]
+  (fn [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state :as game-context}]
+    (do
+     (display-board board)
+     ;;(println (if am-i-white? "white: " "black: "))
+     ;;(println "valid moves:" valid-moves)
+     (f game-context))))
