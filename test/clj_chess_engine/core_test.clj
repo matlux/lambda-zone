@@ -559,7 +559,7 @@
 
 (deftest function-raises-exception
   (testing ""
-    (is (= (play-game (initial-board) exception-f exception-f)
+    (is (= (play-game {:board (initial-board) :f1 exception-f :f2 exception-f})
            {:score [0 1]
             :history [ex]
             :board [\r \n \b \q \k \b \n \r
@@ -573,7 +573,7 @@
             :result :caught-exception}))))
 (deftest function-garbage-move
   (testing ""
-    (is (= (play-game (initial-board) garbage-f garbage-f)
+    (is (= (play-game {:board (initial-board) :f1 garbage-f :f2 garbage-f})
            {:score [0 1]
             :history [-1]
             :board [\r \n \b \q \k \b \n \r
@@ -590,7 +590,7 @@
 
 (deftest function-garbage-move2
   (testing ""
-    (is (= (play-game (initial-board)  (fn [_] {:move ["e9" "e4"]}) garbage-f)
+    (is (= (play-game {:board (initial-board) :f1  (fn [_] {:move ["e9" "e4"]}) :f2 garbage-f})
            {:score [0 1]
             :history [["e9" "e4"]]
             :board [\r \n \b \q \k \b \n \r
@@ -605,7 +605,7 @@
 
 (deftest function-garbage-move3
   (testing "upper case move don't work"
-    (is (= (play-game (initial-board)  (fn [_] ["e8" "A4"]) garbage-f)
+    (is (= (play-game {:board (initial-board) :f1  (fn [_] ["e8" "A4"]) :f2 garbage-f})
            {:score [0 1]
             :history [["e8" "A4"]]
             :board [\r \n \b \q \k \b \n \r
@@ -620,7 +620,7 @@
 
 (deftest function-garbage-move4
   (testing ""
-    (is (= (play-game (initial-board)  (fn [_] ["ee8" "a4"]) garbage-f)
+    (is (= (play-game {:board (initial-board) :f1 (fn [_] ["ee8" "a4"]) :f2 garbage-f})
            {:score [0 1]
             :history [["ee8" "a4"]]
             :board (initial-board)
@@ -628,7 +628,7 @@
 
 (deftest function-garbage-move5
   (testing ""
-    (is (= (play-game (initial-board)  (fn [_] ["e0" "a4"]) garbage-f)
+    (is (= (play-game {:board (initial-board) :f1  (fn [_] ["e0" "a4"]) :f2 garbage-f})
            {:score [0 1]
             :history [["e0" "a4"]]
             :board [\r \n \b \q \k \b \n \r
@@ -645,7 +645,7 @@
 
 (deftest function-garbage-move6
   (testing ""
-    (is (= (play-game (initial-board)  (fn [_] {:move [weird-obj ""] :state nil}) garbage-f)
+    (is (= (play-game {:board (initial-board) :f1 (fn [_] {:move [weird-obj ""] :state nil}) :f2 garbage-f})
            {:score [0 1]
             :history [[weird-obj ""]]
             :board [\r \n \b \q \k \b \n \r
@@ -660,7 +660,7 @@
 
 (deftest function-garbage-move6
   (testing ""
-    (is (= (play-game (initial-board)  (fn [_] [[weird-obj ""] nil]) garbage-f)
+    (is (= (play-game {:board (initial-board) :f1 (fn [_] [[weird-obj ""] nil]) :f2 garbage-f})
            {:score [0 1]
             :history [[[weird-obj ""] nil]]
             :board [\r \n \b \q \k \b \n \r
@@ -675,7 +675,7 @@
 
 (deftest function-garbage-move7
   (testing ""
-    (is (= (play-game (initial-board)  (fn [_] [[-1 0.9] [true false]]) garbage-f)
+    (is (= (play-game {:board (initial-board) :f1 (fn [_] [[-1 0.9] [true false]]) :f2 garbage-f})
            {:score [0 1]
             :history [[[-1 0.9] [true false]]]
             :board [\r \n \b \q \k \b \n \r
@@ -691,7 +691,7 @@
 
 (deftest function-nil-move
   (testing ""
-    (is (= (play-game (initial-board) invalid-move-f invalid-move-f)
+    (is (= (play-game {:board (initial-board) :f1 invalid-move-f :f2 invalid-move-f})
            {:score [0 1]
             :history [nil]
             :board [\r \n \b \q \k \b \n \r
@@ -706,7 +706,7 @@
 
 (deftest function-nil-move2
   (testing ""
-    (is (= (play-game (initial-board) (fn [_] ["e2" "e4"]) invalid-move-f)
+    (is (= (play-game {:board (initial-board) :f1 (fn [_] ["e2" "e4"]) :f2 invalid-move-f})
            {:score [1 0]
             :history [["e2" "e4"] nil]
             :board [\r \n \b \q \k \b \n \r
@@ -721,7 +721,7 @@
 
 (deftest function-nil-move3
   (testing ""
-    (is (= (play-game (initial-board) (fn [_] ["e2" "e4"]) invalid-move-f)
+    (is (= (play-game {:board (initial-board) :f1 (fn [_] ["e2" "e4"]) :f2 invalid-move-f})
            {:score [1 0]
             :history [["e2" "e4"] nil]
             :board [\r \n \b \q \k \b \n \r
@@ -736,7 +736,7 @@
 
 (deftest keyword_move
   (testing ""
-    (is (= (play-game (initial-board) (fn [_] [:e2 :e4]) invalid-move-f)
+    (is (= (play-game {:board (initial-board) :f1 (fn [_] [:e2 :e4]) :f2 invalid-move-f})
            {:score [1 0]
             :history [["e2" "e4"] nil]
             :board [\r \n \b \q \k \b \n \r
@@ -751,7 +751,7 @@
 
 (deftest keyword_move_bad_format
   (testing ""
-    (is (= (play-game (initial-board) (fn [_] [:e9 :e4]) invalid-move-f)
+    (is (= (play-game {:board (initial-board) :f1 (fn [_] [:e9 :e4]) :f2 invalid-move-f})
            {:score [0 1]
             :history [["e9" "e4"]]
             :board [\r \n \b \q \k \b \n \r
@@ -766,7 +766,7 @@
 
 (deftest keyword_move_bad_format
   (testing ""
-    (is (= (play-game (initial-board) (fn [_] [:w7]) invalid-move-f)
+    (is (= (play-game {:board (initial-board) :f1 (fn [_] [:w7]) :f2 invalid-move-f})
            {:score [0 1]
             :history [[:w7]]
             :board [\r \n \b \q \k \b \n \r
@@ -781,7 +781,7 @@
 
 (deftest en-passant-case-game3
   (testing ""
-    (is (= (play-game (initial-board) (fn [_] [:w7]) invalid-move-f)
+    (is (= (play-game {:board (initial-board) :f1 (fn [_] [:w7]) :f2 invalid-move-f})
            {:score [0 1]
             :history [[:w7]]
             :board [\r \n \b \q \k \b \n \r

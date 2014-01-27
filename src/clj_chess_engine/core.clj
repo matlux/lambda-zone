@@ -798,7 +798,7 @@
                  (recur {:board (apply-move board real-move) :f1 f1 :f2 f2 :white-turn? (not white-turn?) :move-history new-history :state-f1 state-f1 :state-f2 new-state :iteration new-iteration})))
              ))))))
 
-(defn play-game [board f1 f2]
+(defn play-game [{ board :board f1 :f1 f2 :f2}]
   (play-game-rec {:board board :f1 f1 :f2 f2 :white-turn? true :move-history []})
   )
 ;; => [score move-history last-board invalid-move? check-mate?]
@@ -825,7 +825,7 @@
 
 
 (defn play-scenario [scenario] (let [[f1 f2] (create-fns-from-scenario scenario)]
-                                 (let [result (play-game (initial-board) f1 f2)]
+                                 (let [result (play-game {:board (initial-board) :f1 f1 :f2 f2})]
                                    result)))
 
 
@@ -915,7 +915,6 @@
 
 (defn all-available-functions [db]
   (for [{login :login fns :functions} (:contenders db)
-
         {id :id fn :function battles :past-battles} fns
         ]
     {:login login :id id :fn fn :past-battles battles }
@@ -934,6 +933,16 @@
 (defn select2functions [db]
   (first (all-available-function-matches db)))
 
+(defn select-contender-by-fn [db f]
+  (for [{login :login fns :functions} (:contenders db)
+        {id :id fn :function battles :past-battles} fns
+        :when (= f fn)
+        ]
+    {:login login :id id :fn fn :past-battles battles }
+    ))
+
+
+
 (count (select2functions @database))
 
 (defn save [result]
@@ -949,8 +958,8 @@
     (write-file   @database "./score.txt")))
 
 (defn tournement []
-  (let [[{name1 :login f1 :fn} {name2 :name f2 :fn}] (select2functions @database)
-        result (play-game (initial-board) f1 f2)]
+  (let [[{name1 :login f1 :fn id1 :id} {name2 :name f2 :fn id2 :id}] (select2functions @database)
+        result (play-game {:board (initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2})]
     (save result)
    (println result)
    (recur)))
