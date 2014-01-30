@@ -1,4 +1,4 @@
-(ns lambda-zone.stats
+(ns lambda-zone.backend
   (:require [clojure.math.numeric-tower :as math]
             [clj-chess-engine.core :refer :all]
             [clojure.string :as str] :reload-all)
