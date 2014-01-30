@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Address book</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <script src="js/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script>
+        function lookupEntry() {
+            $.get('/entry/' + $('#lookupName').val(), function(data) {
+                $('#lookupEntryResult').text(JSON.stringify(data))
+            })
+        }
+
+        function addEntry() {
+            $.ajax({
+                url: '/entry',
+                data: JSON.stringify({login: $('#addName').val(), id: $('#addId').val(), fn: $('#addFunction').val() }),
+                        contentType: 'application/json',
+                type: 'PUT',
+                success: function(data) { $('#addEntryResult').text(JSON.stringify(data)) }
+            })
+        }
+        function deleteEntry() {
+            $.ajax({
+                url: '/entry',
+                data: JSON.stringify({name: $('#addName').val(), email: $('#addEmail').val()}),
+                        contentType: 'application/json',
+                type: 'DELETE',
+                success: function(data) { $('#addEntryResult').text(JSON.stringify(data)) }
+            })
+        }
+    </script>
+</head>
+<body>
+<div class="row">
+    <div class="col-lg-10 col-lg-offset-1">
+        <h1>Chess Game</h1>
+        <div id="add-view" class="panel">
+            <h2>Enter function</h2>
+            <form id="addForm" class="form-inline" onsubmit="return false;">
+                <div id="add-name-group">
+                    <input id="addName" name="name" type="text" class="form-control" placeholder="User Name">
+                </div>
+                <div id="email-group">
+                    <input id="addId" name="name" type="textarea" class="form-control" placeholder="Function Id">
+                    <textarea id="addFunction" placeholder="Function Code" rows="10" cols="100"></textarea>
+                </div>
+                <button type="submit" onclick="addEntry();" class="btn btn-success">Add</button>
+                <button type="submit" onclick="deleteEntry();" class="btn btn-success">Remove</button>
+            </form>
+            <hr/>
+            <pre id="addEntryResult"></pre>
+        </div>
+    </div>
+</body>
+</html>

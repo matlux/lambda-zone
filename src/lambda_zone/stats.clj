@@ -1,7 +1,7 @@
 (ns lambda-zone.stats
   (:require [clojure.math.numeric-tower :as math]
             [clj-chess-engine.core :refer :all]
-            [clojure.string :as str :refer [replace]] :reload-all)
+            [clojure.string :as str] :reload-all)
   (:import clojure.lang.PersistentVector))
 
 
@@ -21,16 +21,16 @@
     (reduce conj [] (line-seq rdr))))
 
 
-(def random-f-src '(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
+(def random-f-src "(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
   (let [v (into [] valid-moves)
         iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
 
-    (println (if am-i-white? "white: " "black: "))
-    (println "valid moves:" valid-moves)
-    (println "iteration:" iteration)
+    (println (if am-i-white? \"white: \" \"black: \"))
+    (println \"valid moves:\" valid-moves)
+    (println \"iteration:\" iteration)
     (let [move (rand-int (count valid-moves))]
-      (println "choosen move:" (get v move))
-      {:move (get v move) :state iteration})) ))
+      (println \"choosen move:\" (get v move))
+      {:move (get v move) :state iteration})) )")
 
 
 (def database (atom (read-string (slurp "./db.clj"))))
@@ -59,7 +59,7 @@
 
 
 (defn select2functions [db]
-  (first (all-available-function-matches db)))
+  (second (all-available-function-matches db)))
 
 (defn select-contender-by-id [db id]
   (for [{login :login fns :functions} (:contenders db)
@@ -75,7 +75,7 @@
 
 (@database :contenders)
 
-(defn save [result]
+(defn save-result [result]
   (let [{s :score res :result id1 :id1 id2 :id2}  result
         ]
     (swap! database (fn [db]
@@ -87,7 +87,7 @@
 
 (defn compile-fn [f src]
   (if (nil? f)
-    (wrapper-display-f (eval src))
+    (wrapper-display-f (eval (read-string src)))
     f))
 
 ;;((compile-fn nil random-f-src) {})
@@ -97,7 +97,7 @@
         f1 (dbg (compile-fn f-1 (dbg fn-src1)))
         f2 (dbg (compile-fn f-2 fn-src2))
         result (play-game {:board (initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2})]
-    (save (merge result {:id1 id1 :id2 id2}))
+    (save-result (merge result {:id1 id1 :id2 id2}))
    (println result)
    (recur)))
 
