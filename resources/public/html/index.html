@@ -34,25 +34,65 @@
     </script>
 </head>
 <body>
+
+
+<div class="row">
+    <div class="col-lg-10 col-lg-offset-1">
+        <h1>Chess Game</h1>
+        <div id="user-view" class="panel">
+            <h2>Register</h2>
+            <form id="registerForm" class="form-inline" onsubmit="return false;">
+                <div id="register-name-group">
+                    <input id="loginName" name="name" type="text" class="form-control" placeholder="User Name">
+                </div>
+                <div id="email-group">
+                    <input id="addEmail" name="name" type="text" class="form-control" placeholder="Email address">
+                </div>
+                <div id="register-password-group">
+                    <input id="registerPassword" name="name" type="password" class="form-control" placeholder="password">
+                </div>
+                <div id="confirm-password-group">
+                    <input id="confirmPassword" name="name" type="password" class="form-control" placeholder="password">
+                </div>
+                <button type="submit" onclick="addEntry();" class="btn btn-success">Create User</button>
+            </form>
+            <hr/>
+            <pre id="registerResult"></pre>
+            <h2>Login</h2>
+            <form id="loginForm" class="form-inline" onsubmit="return false;">
+                <div id="login-name-group">
+                    <input id="loginName" name="name" type="text" class="form-control" placeholder="User Name">
+                </div>
+                <div id="password-group">
+                    <input id="checkPassword" name="name" type="password" class="form-control" placeholder="password">
+                </div>
+                <button type="submit" onclick="deleteEntry();" class="btn btn-success">Login Existing User</button>
+            </form>
+            <hr/>
+            <pre id="loginResult"></pre>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-lg-10 col-lg-offset-1">
         <h1>Chess Game</h1>
         <div id="add-view" class="panel">
             <h2>Enter function</h2>
             <form id="addForm" class="form-inline" onsubmit="return false;">
-                <div id="add-name-group">
-                    <input id="addName" name="name" type="text" class="form-control" placeholder="User Name">
-                </div>
-                <div id="email-group">
+                <div id="function-id-group">
                     <input id="addId" name="name" type="textarea" class="form-control" placeholder="Function Id">
+                </div>
+                <div id="function-group">
                     <textarea id="addFunction" placeholder="Function Code" rows="10" cols="100"></textarea>
                 </div>
-                <button type="submit" onclick="addEntry();" class="btn btn-success">Add</button>
+                <button type="submit" onclick="addEntry();" class="btn btn-success">Enter Competition</button>
                 <button type="submit" onclick="deleteEntry();" class="btn btn-success">Remove</button>
             </form>
             <hr/>
-            <pre id="addEntryResult"></pre>
+            <pre id="functionResult"></pre>
         </div>
     </div>
+</div>
 </body>
 </html>
