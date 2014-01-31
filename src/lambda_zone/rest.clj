@@ -2,7 +2,8 @@
   (:use [ring.middleware.reload]
         [ring.util.response])
   (:require [clojure.math.numeric-tower :as math]
-            [clj-chess-engine.core :refer :all]
+            [clj-chess-engine.core :as chess]
+            [lambda-zone.backend :as back]
             ;;[clojure.string :as str]
             [compojure.handler :as handler]
             [compojure.core
@@ -19,7 +20,7 @@
 (defroutes api
   (GET "/" [] (clojure.java.io/resource "public/html/index.html"))
   (GET "/entry/:name" [name] (response (filter (fn [{n :name}] (= n name )) @user-table)))
-  (PUT "/entry" {msg :body} (response (do (println "added" msg) (swap! user-table (fn [u] (conj u msg))) @user-table)))
+  (PUT "/function" {msg :body} (response (do (println "added" msg) (back/save-function msg))))
   (c-route/resources "/"))
 
 ;;

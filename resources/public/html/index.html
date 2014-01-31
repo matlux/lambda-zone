@@ -7,25 +7,45 @@
     <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script>
-        function lookupEntry() {
-            $.get('/entry/' + $('#lookupName').val(), function(data) {
-                $('#lookupEntryResult').text(JSON.stringify(data))
-            })
-        }
 
-        function addEntry() {
+        function register() {
             $.ajax({
-                url: '/entry',
-                data: JSON.stringify({login: $('#addName').val(), id: $('#addId').val(), fn: $('#addFunction').val() }),
+                url: '/register',
+                data: JSON.stringify({login: $('#addName').val(), id: $('#addEmail').val() }),
                         contentType: 'application/json',
                 type: 'PUT',
                 success: function(data) { $('#addEntryResult').text(JSON.stringify(data)) }
             })
         }
-        function deleteEntry() {
+        function login() {
+            $.ajax({
+                url: '/login',
+                data: JSON.stringify({login: $('#addName').val() }),
+                        contentType: 'application/json',
+                type: 'PUT',
+                success: function(data) { $('#addEntryResult').text(JSON.stringify(data)) }
+            })
+        }
+
+        function loadFunction() {
+            $.get('/entry/' + $('#lookupName').val(), function(data) {
+                $('#lookupEntryResult').text(JSON.stringify(data))
+            })
+        }
+
+        function addFunctionFunction() {
+            $.ajax({
+                url: '/function',
+                data: JSON.stringify({login: $('#loginName').val(), id: $('#addId').val(), fn: $('#addFunction').val() }),
+                        contentType: 'application/json',
+                type: 'PUT',
+                success: function(data) { $('#functionResult').text(JSON.stringify(data)) }
+            })
+        }
+        function deleteFunction() {
             $.ajax({
                 url: '/entry',
-                data: JSON.stringify({name: $('#addName').val(), email: $('#addEmail').val()}),
+                data: JSON.stringify({login: $('#loginName').val(), id: $('#addId').val() }),
                         contentType: 'application/json',
                 type: 'DELETE',
                 success: function(data) { $('#addEntryResult').text(JSON.stringify(data)) }
@@ -43,7 +63,7 @@
             <h2>Register</h2>
             <form id="registerForm" class="form-inline" onsubmit="return false;">
                 <div id="register-name-group">
-                    <input id="loginName" name="name" type="text" class="form-control" placeholder="User Name">
+                    <input id="registerName" name="name" type="text" class="form-control" placeholder="User Name">
                 </div>
                 <div id="email-group">
                     <input id="addEmail" name="name" type="text" class="form-control" placeholder="Email address">
@@ -54,19 +74,16 @@
                 <div id="confirm-password-group">
                     <input id="confirmPassword" name="name" type="password" class="form-control" placeholder="password">
                 </div>
-                <button type="submit" onclick="addEntry();" class="btn btn-success">Create User</button>
+                <button type="submit" onclick="register();" class="btn btn-success">Create User</button>
             </form>
             <hr/>
             <pre id="registerResult"></pre>
             <h2>Login</h2>
             <form id="loginForm" class="form-inline" onsubmit="return false;">
-                <div id="login-name-group">
-                    <input id="loginName" name="name" type="text" class="form-control" placeholder="User Name">
-                </div>
                 <div id="password-group">
                     <input id="checkPassword" name="name" type="password" class="form-control" placeholder="password">
                 </div>
-                <button type="submit" onclick="deleteEntry();" class="btn btn-success">Login Existing User</button>
+                <button type="submit" onclick="login();" class="btn btn-success">Login User</button>
             </form>
             <hr/>
             <pre id="loginResult"></pre>
@@ -80,14 +97,18 @@
         <div id="add-view" class="panel">
             <h2>Enter function</h2>
             <form id="addForm" class="form-inline" onsubmit="return false;">
+                <div id="login-name-group">
+                    <input id="loginName" name="name" type="text" class="form-control" placeholder="User Name">
+                </div>
                 <div id="function-id-group">
                     <input id="addId" name="name" type="textarea" class="form-control" placeholder="Function Id">
                 </div>
                 <div id="function-group">
                     <textarea id="addFunction" placeholder="Function Code" rows="10" cols="100"></textarea>
                 </div>
-                <button type="submit" onclick="addEntry();" class="btn btn-success">Enter Competition</button>
-                <button type="submit" onclick="deleteEntry();" class="btn btn-success">Remove</button>
+                <button type="submit" onclick="loadFunction();" class="btn btn-success">Load Function</button>
+                <button type="submit" onclick="addFunctionFunction();" class="btn btn-success">Enter Competition</button>
+                <button type="submit" onclick="deleteFunction();" class="btn btn-success">Remove</button>
             </form>
             <hr/>
             <pre id="functionResult"></pre>

@@ -32,21 +32,27 @@
       (println \"choosen move:\" (get v move))
       {:move (get v move) :state iteration})) )")
 
+(def random-f-form '(fn random-f [{board :board, am-i-white? :white-turn, valid-moves :valid-moves, ic :in-check?, h :history, s :state}]
+                      (let [v (into [] valid-moves)
+                            iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
+                        (println (if am-i-white? "white: " "black: "))
+                        (println "valid moves:" valid-moves)
+                        (println "iteration:" iteration)
+                        (let [move (rand-int (count valid-moves))]
+                          (println "choosen move:" (get v move))
+                          {:move (get v move), :state iteration}))))
 
-(def database (atom (read-string (slurp "./db.clj"))))
 
-(def database-test (atom {:matches [{:id1 "superman" :id2 "daredevil" :score [1 0]}]
-                     :contenders [{:login "Philip" :functions [{:id "daredevil" :function-src random-f-src}]}
-                                  {:login "Nicholas" :functions [{:id "superman" :function-src random-f-src}]}
-                                  {:login "Steve" :functions [{:id "Wonderboy" :function-src random-f-src }]}
-                                  {:login "Bob" :functions [{:id "Wonderboy2" :function-src random-f-src }]}] }))
+;;(def database (atom (read-string (slurp "./db.clj"))))
+
+(def database (atom {:matches [{:id1 "superman" :id2 "daredevil" :score [1 0]}]
+                          :contenders [{:login "Philip" :id "daredevil" :fn random-f-src}
+                                       {:login "Nicholas" :id "superman" :fn random-f-src}
+                                       {:login "Steve" :id "Wonderboy" :fn random-f-src }
+                                       {:login "Bob" :id "Wonderboy2" :fn random-f-src }] }))
 
 (defn all-available-functions [db]
-  (for [{login :login fns :functions} (:contenders db)
-        {id :id fn :function fn-src :function-src} fns
-        ]
-    {:login login :id id :fn fn :fn-src fn-src }
-    ))
+  (:contenders db))
 
 (defn all-available-function-matches [db]
   (let [all-fns (all-available-functions db)]
@@ -56,17 +62,29 @@
                      ;(> 0 (compare (.toString fn1) (.toString fn2)))
                      )] [fn1 fn2])))
 
+(defn all-matches [db]
+  (:matches db))
 
+(defn remaining-fn2comp [db]
+                   (for [[{id1 :id :as f1} {id2 :id :as f2}] (all-available-function-matches db)
+                         {id1m :id1 id2m :id2 :as match} (all-matches db)
+                         :when (and (not= f1 f2)
+                                    (not= id1 id1m)
+                                    (not= id2 id2m)
+                                        ;(> 0 (compare (.toString fn1) (.toString fn2)))
+                                    )]
+                     [f1 f2]))
+
+(count (remaining-fn2comp @database))
 
 (defn select2functions [db]
   (second (all-available-function-matches db)))
 
 (defn select-contender-by-id [db id]
-  (for [{login :login fns :functions} (:contenders db)
-        {i :id fn :function fn-src :function-src} fns
+  (for [{ i :id :as function} (:contenders db)
         :when (= i id)
         ]
-    {:login login :id id :fn fn :fn-src fn-src  }
+    function
     ))
 
 (select-contender-by-id @database "daredevil")
@@ -83,6 +101,13 @@
                        :contenders (:contenders db)}))
     (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")))
 
+(defn save-function [function]
+  (swap! database (fn [db]
+                    {:matches (:matches db)
+                     :contenders (conj (:contenders db) function)}))
+  (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
+  )
+
 ;(str @database)
 
 (defn compile-fn [f src]
@@ -93,9 +118,9 @@
 ;;((compile-fn nil random-f-src) {})
 
 (defn tournament []
-  (let [[{name1 :login f-1 :fn fn-src1 :fn-src id1 :id} {name2 :name f-2 :fn fn-src2 :fn-src id2 :id}] (select2functions @database)
-        f1 (dbg (compile-fn f-1 (dbg fn-src1)))
-        f2 (dbg (compile-fn f-2 fn-src2))
+  (let [[{name1 :login fn-src1 :fn id1 :id} {name2 :name fn-src2 :fn id2 :id}] (select2functions @database)
+        f1 (dbg (compile-fn nil (dbg fn-src1)))
+        f2 (dbg (compile-fn nil fn-src2))
         result (play-game {:board (initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2})]
     (save-result (merge result {:id1 id1 :id2 id2}))
    (println result)
