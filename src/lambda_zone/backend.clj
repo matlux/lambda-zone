@@ -144,12 +144,14 @@
        (println result)
        (recur)))))
 
+(def tournament-agent (agent {}))
+
 (defn save-function [function]
   (swap! database (fn [db]
                     {:matches (:matches db)
                      :contenders (conj (:contenders db) function)}))
   (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
-  (send (agent {}) (fn [_] (tournament)))
+  (send tournament-agent (fn [_] (tournament)))
   )
 
 
