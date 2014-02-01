@@ -20,7 +20,7 @@
 (defroutes api
   (GET "/" [] (clojure.java.io/resource "public/html/index.html"))
   (GET "/entry/:name" [name] (response (filter (fn [{n :name}] (= n name )) @user-table)))
-  (PUT "/function" {msg :body} (response (do (println "added" msg) (back/save-function msg))))
+  (PUT "/function" {msg :body} (response (do (println "added" msg) (back/save-function msg) {:return "ok"})))
   (c-route/resources "/"))
 
 ;;

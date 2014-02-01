@@ -122,12 +122,6 @@
                        :contenders (:contenders db)}))
     (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")))
 
-(defn save-function [function]
-  (swap! database (fn [db]
-                    {:matches (:matches db)
-                     :contenders (conj (:contenders db) function)}))
-  (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
-  )
 
 ;(str @database)
 
@@ -150,8 +144,25 @@
        (println result)
        (recur)))))
 
-(let [[{name1 :login fn-src1 :fn id1 :id} {name2 :name fn-src2 :fn id2 :id}] ((fn [] nil))]
-  name1)
+(defn save-function [function]
+  (swap! database (fn [db]
+                    {:matches (:matches db)
+                     :contenders (conj (:contenders db) function)}))
+  (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
+  (send (agent {}) (fn [_] (tournament)))
+  )
+
+
+;; (let [[{name1 :login fn-src1 :fn id1 :id} {name2 :name fn-src2 :fn id2 :id}] ((fn [] nil))]
+;;   name1)
+
+
+
+
+
 
 (defn -main []
- (tournament))
+  ;;  (tournament)
+  ;;(save-function {:login "a" :id "b" :fn random-f-src })
+  (send (agent {}) (do (fn [_] (tournament)) 1))
+  (println "finished"))
