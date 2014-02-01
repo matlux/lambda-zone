@@ -125,12 +125,26 @@
 
 ;(str @database)
 
-(defn compile-fn [f src]
+(defn compile-fn-verbosed [f src]
   (if (nil? f)
     (wrapper-display-f (eval (read-string src)))
     f))
+(defn compile-fn [f src]
+  (if (nil? f)
+    (eval (read-string src))
+    f))
 
 ;;((compile-fn nil random-f-src) {})
+
+(defmacro with-time-assoced
+  "Evaluates exprs in a context in which *out* is bound to a fresh
+  StringWriter.  Returns the assoced map with :time -> created by any nested printing
+  calls."
+  [& body]
+  `(let [s# (new java.io.StringWriter)]
+     (binding [*out* s#]
+       (assoc (time ~@body) :time (str s#)))))
+
 
 (defn tournament []
   (let [match (select2functions @database)]
@@ -138,7 +152,7 @@
      (let [[{name1 :login fn-src1 :fn id1 :id} {name2 :name fn-src2 :fn id2 :id}] match
           f1 (dbg (compile-fn nil (dbg fn-src1)))
           f2 (dbg (compile-fn nil fn-src2))
-          result (play-game {:board (initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2})
+          result (with-time-assoced (play-game {:board (initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2}))
           res (save-result (merge result {:id1 id1 :id2 id2}))
           ]
        (println result)
@@ -146,12 +160,14 @@
 
 (def tournament-agent (agent {}))
 
+(defn schedule-recomputation []  (send tournament-agent (fn [_] (tournament))))
+
 (defn save-function [function]
   (swap! database (fn [db]
                     {:matches (:matches db)
                      :contenders (conj (:contenders db) function)}))
   (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
-  (send tournament-agent (fn [_] (tournament)))
+ (schedule-recomputation)
   )
 
 
