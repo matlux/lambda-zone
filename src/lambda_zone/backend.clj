@@ -1,7 +1,8 @@
 (ns lambda-zone.backend
   (:require [clojure.math.numeric-tower :as math]
             [clj-chess-engine.core :refer :all]
-            [clojure.string :as str] :reload-all)
+            [clojure.string :as str]
+            [clojure.set :as se] :reload-all)
   (:import clojure.lang.PersistentVector))
 
 
@@ -43,13 +44,13 @@
                           {:move (get v move), :state iteration}))))
 
 
-;;(def database (atom (read-string (slurp "./db.clj"))))
+(def database (atom (read-string (slurp "./db.clj"))))
 
-(def database (atom {:matches [{:id1 "superman" :id2 "daredevil" :score [1 0]}]
+(def database-test (atom {:matches [{:id1 "superman" :id2 "daredevil" :score [1 0]}]
                           :contenders [{:login "Philip" :id "daredevil" :fn random-f-src}
                                        {:login "Nicholas" :id "superman" :fn random-f-src}
                                        {:login "Steve" :id "Wonderboy" :fn random-f-src }
-                                       {:login "Bob" :id "Wonderboy2" :fn random-f-src }] }))
+                                        ] }))
 
 (defn all-available-functions [db]
   (:contenders db))
@@ -65,20 +66,40 @@
 (defn all-matches [db]
   (:matches db))
 
-(defn remaining-fn2comp [db]
-                   (for [[{id1 :id :as f1} {id2 :id :as f2}] (all-available-function-matches db)
-                         {id1m :id1 id2m :id2 :as match} (all-matches db)
-                         :when (and (not= f1 f2)
-                                    (not= id1 id1m)
-                                    (not= id2 id2m)
-                                        ;(> 0 (compare (.toString fn1) (.toString fn2)))
-                                    )]
-                     [f1 f2]))
+(defn fn-pairs-already-comp [db]
+  (let [played-matches (all-matches db)]
+    (for [[{id1 :id :as f1} {id2 :id :as f2}] (all-available-function-matches db)
+          {id1m :id1 id2m :id2} (all-matches db)
+          :when (and
+                 (= [id1 id2] [id1m id2m])
+                 ;;(not= id2 id2m)
+                 ;;(> 0 (compare (.toString fn1) (.toString fn2)))
+                 )]
+      [f1 f2])))
+;; (defn remaining-fn2comp [db]
+;;   (let [possible-matches (all-available-function-matches db)
+;;         played-matches (all-matches db)]
+;;     (filter
+;;      (fn [[{id1 :id :as f1} {id2 :id :as f2}]]
+;;        (some
+;;         (fn [{id1m :id1 id2m :id2 :as match}] (= [id1 id2] [id1m id2m])) played-matches))
+;;      possible-matches)))
 
-(count (remaining-fn2comp @database))
+(defn remaining-fn-pairs2comp [db]
+  (let [possible-matches (into #{} (all-available-function-matches db))
+        already-played (into #{} (fn-pairs-already-comp db))]
+    (se/difference possible-matches already-played)))
+
+
+;;(filter (fn [{id1m :id1 id2m :id2 :as match}] ) played-matches)
+(count (all-matches @database))
+
+(count (all-available-function-matches
+        @database))
+(count (remaining-fn-pairs2comp @database))
 
 (defn select2functions [db]
-  (second (all-available-function-matches db)))
+  (first (remaining-fn-pairs2comp db)))
 
 (defn select-contender-by-id [db id]
   (for [{ i :id :as function} (:contenders db)
@@ -118,14 +139,19 @@
 ;;((compile-fn nil random-f-src) {})
 
 (defn tournament []
-  (let [[{name1 :login fn-src1 :fn id1 :id} {name2 :name fn-src2 :fn id2 :id}] (select2functions @database)
-        f1 (dbg (compile-fn nil (dbg fn-src1)))
-        f2 (dbg (compile-fn nil fn-src2))
-        result (play-game {:board (initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2})]
-    (save-result (merge result {:id1 id1 :id2 id2}))
-   (println result)
-   (recur)))
+  (let [match (select2functions @database)]
+   (when match
+     (let [[{name1 :login fn-src1 :fn id1 :id} {name2 :name fn-src2 :fn id2 :id}] match
+          f1 (dbg (compile-fn nil (dbg fn-src1)))
+          f2 (dbg (compile-fn nil fn-src2))
+          result (play-game {:board (initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2})
+          res (save-result (merge result {:id1 id1 :id2 id2}))
+          ]
+       (println result)
+       (recur)))))
 
+(let [[{name1 :login fn-src1 :fn id1 :id} {name2 :name fn-src2 :fn id2 :id}] ((fn [] nil))]
+  name1)
 
 (defn -main []
  (tournament))
