@@ -2,7 +2,8 @@
   (:require [clojure.math.numeric-tower :as math]
             [clj-chess-engine.core :refer :all]
             [clojure.string :as str]
-            [clojure.set :as se] :reload-all)
+            [clojure.set :as se]
+            [cemerick.friend :as friend] :reload-all)
   (:import clojure.lang.PersistentVector))
 
 
@@ -164,12 +165,13 @@
 
 (defn schedule-recomputation []  (send tournament-agent (fn [_] (tournament))))
 
-(defn save-function [function]
-  (swap! database (fn [db]
-                    {:matches (:matches db)
-                     :contenders (conj (:contenders db) function)}))
-  (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
- (schedule-recomputation)
+(defn save-function [{function :body :as req}]
+  (let [{login :identity} (friend/current-authentication req)]
+    (swap! database (fn [db]
+                     {:matches (:matches db)
+                      :contenders (conj (:contenders db) (assoc function :login login))}))
+   (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
+   (schedule-recomputation))
   )
 
 
