@@ -22,7 +22,7 @@
     (reduce conj [] (line-seq rdr))))
 
 
-(def random-f-src "(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
+(def random-f-src-with-print "(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
   (let [v (into [] valid-moves)
         iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
 
@@ -33,14 +33,16 @@
       (println \"choosen move:\" (get v move))
       {:move (get v move) :state iteration})) )")
 
+(def random-f-src "(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
+  (let [v (into [] valid-moves)
+        iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
+    (let [move (rand-int (count valid-moves))]
+      {:move (get v move) :state iteration})) )")
+
 (def random-f-form '(fn random-f [{board :board, am-i-white? :white-turn, valid-moves :valid-moves, ic :in-check?, h :history, s :state}]
                       (let [v (into [] valid-moves)
                             iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
-                        (println (if am-i-white? "white: " "black: "))
-                        (println "valid moves:" valid-moves)
-                        (println "iteration:" iteration)
                         (let [move (rand-int (count valid-moves))]
-                          (println "choosen move:" (get v move))
                           {:move (get v move), :state iteration}))))
 
 
