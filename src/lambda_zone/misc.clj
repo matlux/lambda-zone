@@ -60,7 +60,7 @@
                 data: JSON.stringify({id: $('#addId').val(), fn: $('#addFunction').val() }),
                         contentType: 'application/json',
                 type: 'PUT',
-                success: function(data) { $('#functionResult').text(JSON.stringify(data)) }
+                success: function(data) { $('#addEntryResult').text(JSON.stringify(data)) }
             })
         }
         function deleteFunction() {
