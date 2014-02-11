@@ -113,7 +113,7 @@
 
 (defroutes api
   (GET "/" req (home-page req))
-  (GET "/entry/:name" [name] (response (filter (fn [{n :name}] (= n name )) @user-table)))
+  (GET "/function/:id" [id] (response (back/retrieve-function id)))
   (PUT "/function" req (save-function req))
   (c-route/resources "/"))
 

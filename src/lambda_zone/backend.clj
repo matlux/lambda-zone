@@ -141,6 +141,60 @@
      (binding [*out* s#]
        (assoc (time ~@body) :time (str s#)))))
 
+(defn save-result [result]
+  (let [{s :score res :result id1 :id1 id2 :id2}  result
+        ]
+    (swap! database (fn [db]
+                      {:matches (conj (:matches db) (dissoc result :history :board) )
+                       :contenders (:contenders db)}))
+    (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")))
+
+(defn remove-f-id-in-atom [{id :id login :login :as function} contenders]
+  (filter (fn [{iddb :id logindb :login}]  (not (and (= iddb id) (= logindb login)))) contenders))
+
+(def schedule-recomputation)
+
+(defn save-function-in-atom [{id :id login :login :as function}]
+  (swap! database (fn [db]
+                    {:matches (:matches db)
+                     :contenders (conj (remove-f-id-in-atom function (:contenders db)) function)}))
+  (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
+  (schedule-recomputation)
+  )
+
+(defn retrieve-function-in-atom [{id :id login :login :as function}]
+  (first (filter (fn [{iddb :id logindb :login}]  (and (= iddb id) (= logindb login))) (:contenders @database)))
+  )
+
+(defn duplicate-function-in-atom? [{id :id login :login :as function}]
+  (some (fn [{iddb :id logindb :login}] (and (= iddb id) (not= logindb login))) (:contenders @database)))
+
+(defn save-function [{{id :id :as function} :body :as req}]
+  (let [{login :identity} (friend/current-authentication req)
+        f-with-identity (assoc function :login login)]
+    (cond
+     (nil? login) {:return "function cannot be added anonymously. Please login with the openId above"}
+     (duplicate-function-in-atom? f-with-identity)
+     {:return (str "function name " id " is already owned by a different user")}
+     :else (do (save-function-in-atom f-with-identity)
+          (if (nil? login)
+            {:return "function added anonymously"}
+            {:return "function added ok"}))))
+  )
+(defn retrieve-function [id]
+  (let [{login :identity} (friend/current-authentication friend/*identity*)
+        f-pk {:login login :id id}]
+    (cond
+     (nil? login) {:return "function cannot be retrieved anonymously. Please login with the openId above"}
+     (duplicate-function-in-atom? f-pk)
+     {:return (str "function name " id " is already owned by a different user")}
+     :else (let [r-f (retrieve-function-in-atom f-pk)]
+             (if (nil? r-f)
+               {:result "function not found" :not-found true}
+               r-f))
+     ))
+  )
+
 
 (defn tournament []
   (let [match (select2functions @database)]
@@ -158,43 +212,7 @@
 
 (defn schedule-recomputation []  (send tournament-agent (fn [_] (tournament))))
 
-(defn save-result [result]
-  (let [{s :score res :result id1 :id1 id2 :id2}  result
-        ]
-    (swap! database (fn [db]
-                      {:matches (conj (:matches db) (dissoc result :history :board) )
-                       :contenders (:contenders db)}))
-    (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")))
 
-
-(defn remove-f-id-in-atom [{id :id login :login :as function} contenders]
-  (filter (fn [{iddb :id logindb :login}]  (not (and (= iddb id) (= logindb login)))) contenders))
-
-
-(defn save-function-in-atom [{id :id login :login :as function}]
-
-  (swap! database (fn [db]
-                    {:matches (:matches db)
-                     :contenders (conj (remove-f-id-in-atom function (:contenders db)) function)}))
-  (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
-  (schedule-recomputation)
-  )
-
-(defn duplicate-function-in-atom? [{id :id login :login :as function}]
-  (some (fn [{iddb :id logindb :login}] (and (= iddb id) (not= logindb login))) (:contenders @database)))
-
-(defn save-function [{{id :id :as function} :body :as req}]
-  (let [{login :identity} (friend/current-authentication req)
-        f-with-identity (assoc function :login login)]
-    (cond
-     (nil? login) {:return "function cannot be added anonymously. Please login with the openId above"}
-     (duplicate-function-in-atom? f-with-identity)
-     {:return (str "function name " id " is already own by a different user")}
-     :else (do (save-function-in-atom f-with-identity)
-          (if (nil? login)
-            {:return "function added anonymously"}
-            {:return "function added ok"}))))
-  )
 
 
 ;;@database

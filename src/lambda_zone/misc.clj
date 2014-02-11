@@ -49,8 +49,8 @@
 
 (def jquery "
         function loadFunction() {
-            $.get('/entry/' + $('#lookupName').val(), function(data) {
-                $('#lookupEntryResult').text(JSON.stringify(data))
+            $.get('/function/' + $('#addId').val(), function(data) {
+                $('#addEntryResult').text(JSON.stringify(data))
             })
         }
 
