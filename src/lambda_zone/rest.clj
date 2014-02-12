@@ -106,15 +106,11 @@
    [:h3 "Logging out"]
    [:p (e/link-to (misc/context-uri req "logout") "Click here to log out") "."])))
 
-(defn save-function [{msg :body :as req}]
-  (response (back/save-function req)))
-
-
 
 (defroutes api
   (GET "/" req (home-page req))
   (GET "/function/:id" [id] (response (back/retrieve-function id)))
-  (PUT "/function" req (save-function req))
+  (PUT "/function" req (response (back/save-function req)))
   (c-route/resources "/"))
 
 ;;

@@ -150,13 +150,14 @@
     (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")))
 
 (defn remove-f-id-in-atom [{id :id login :login :as function} contenders]
-  (filter (fn [{iddb :id logindb :login}]  (not (and (= iddb id) (= logindb login)))) contenders))
+  (remove (fn [{iddb :id logindb :login}]  (and (= iddb id) (= logindb login))) contenders))
 
-(def schedule-recomputation)
+(declare schedule-recomputation)
+
 
 (defn save-function-in-atom [{id :id login :login :as function}]
   (swap! database (fn [db]
-                    {:matches (:matches db)
+                    {:matches (remove (fn [{:keys [id1 id2]}] (or (= id1 id) (= id2 id))) (:matches db))
                      :contenders (conj (remove-f-id-in-atom function (:contenders db)) function)}))
   (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
   (schedule-recomputation)
@@ -169,6 +170,17 @@
 (defn duplicate-function-in-atom? [{id :id login :login :as function}]
   (some (fn [{iddb :id logindb :login}] (and (= iddb id) (not= logindb login))) (:contenders @database)))
 
+;;(defn delete (filter (fn [{:keys [id1 id2]}] (not (or (= id1 "a") (= id2 "a")))) (:matches @database)))
+
+(defn delete-result-in-atom [{id :id login :login :as function}]
+  (swap! database (fn [db]
+                    {:matches (filter (fn [{:keys [id1 id2]}] (not (or (= id1 "a") (= id2 "a")))) (:matches db))
+                     :contenders (:contenders db)}))
+  (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj"))
+
+;;(delete-result-in-atom [{:id "a"}])
+
+
 (defn save-function [{{id :id :as function} :body :as req}]
   (let [{login :identity} (friend/current-authentication req)
         f-with-identity (assoc function :login login)]
@@ -176,7 +188,9 @@
      (nil? login) {:return "function cannot be added anonymously. Please login with the openId above"}
      (duplicate-function-in-atom? f-with-identity)
      {:return (str "function name " id " is already owned by a different user")}
-     :else (do (save-function-in-atom f-with-identity)
+     :else (do
+
+             (save-function-in-atom f-with-identity)
           (if (nil? login)
             {:return "function added anonymously"}
             {:return "function added ok"}))))
