@@ -114,7 +114,7 @@
   (c-route/resources "/"))
 
 ;;
-(def app
+(def app-routes
   (->
    (friend/authenticate
               api
@@ -135,7 +135,7 @@
       ))
 
 (defn start-server []
-  (server/serve (var app) {:port 8070
+  (server/serve (var app-routes) {:port 8070
                            :join? false
                        :open-browser? false}))
 
@@ -147,3 +147,6 @@
 
 
 ;;@user-table
+ (def app
+   #'app-routes)
+;; (defonce web-server (http-kit/run-server #'app {:port 3000 :join? false}))

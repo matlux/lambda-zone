@@ -24,5 +24,26 @@
 
                  ;; only used to discover demo app namespaces
                  [bultitude "0.1.7"]
+
+                 [jarohen/chord "0.2.1"]
+
+                 [org.clojure/clojurescript "0.0-1913"]
+                 [org.clojure/tools.reader "0.7.8"]
+
+                 [prismatic/dommy "0.1.2"]
                  ]
+  :plugins [[lein-pdo "0.1.1"]
+            [jarohen/lein-frodo "0.2.0"]
+            [lein-cljsbuild "0.3.3"]]
+
+  :frodo/config-resource "chord-example.edn"
+
+  :aliases {"dev" ["pdo" "cljsbuild" "auto," "frodo"]}
+
+  :resource-paths ["resources" "target/resources"]
+
+  :cljsbuild {:builds [{:source-paths ["src"]
+                        :compiler {:output-to "target/resources/js/chord-example.js"
+                                   :optimizations :whitespace
+                                   :pretty-print true}}]}
   :main lambda-zone.rest)
