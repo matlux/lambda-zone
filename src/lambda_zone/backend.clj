@@ -1,6 +1,6 @@
 (ns lambda-zone.backend
   (:require [clojure.math.numeric-tower :as math]
-            [clj-chess-engine.core :refer :all]
+            [clj-chess-engine.core :as chess]
             [clojure.string :as str]
             [clojure.set :as se]
             [cemerick.friend :as friend] :reload-all)
@@ -123,14 +123,85 @@
 
 (defn compile-fn-verbosed [f src]
   (if (nil? f)
-    (wrapper-display-f (eval (read-string src)))
+    (chess/wrapper-display-f (eval (read-string src)))
     f))
-(defn compile-fn [f src]
-  (if (nil? f)
-    (eval (read-string src))
-    f))
+(defn compile-fn
+  ([src]
+     compile-fn nil src)
+  ([f src]
+     (if (nil? f)
+       (eval (read-string src))
+       f)))
 
-;;((compile-fn nil random-f-src) {})
+(defn single-param? [param]
+  (and (vector? param) (= (count param) 1)))
+
+
+(defn parse-error? [form]
+  (map? form))
+
+(defn validate-form [form]
+  (let [;;form (read-string src)
+        [fn-exp & sx] form
+        [name & sx2] (if (symbol? (first sx)) sx (conj sx nil)  )
+        ]
+    (cond (and (not= fn-exp 'fn) (not= fn-exp 'fn*)) {:result "submitted code is not a function" :reason "fn of fn* missing at beginning of function"}
+          (or
+           (and (list? (first sx2)) (every? #(not (single-param? %)) sx2))
+           (not (single-param? (first sx2)))) {:result "function should accept one argument"}
+           :else {:result :ok})
+    ))
+
+(defn evaluate [form]
+  (try
+    (eval form)
+    (catch Throwable e {:result :failed-evaluation :reason (str "caught exception: " (.getMessage e))})))
+
+(defn validate-compile-exec [form]
+  (try
+    (let [evaled (evaluate form)] ;;;super dangerous TODO: use clojail
+      (if (:result evaled)
+        evaled
+        (let [
+              eval-result (evaled {:board (chess/initial-board) :white-turn true :valid-moves [["e2" "e4"]] :history []})]
+          (cond (not (or
+                      (and (map? eval-result) (vector? (:move eval-result)))
+                      (vector? eval-result)))
+                {:result :failed-test-execution :reason "function compiles, execute but does not return a well formed valid move"}
+                :else {:result :ok}
+                ))))
+    (catch Throwable e {:result (str "caught exception: " (.getMessage e))})))
+
+
+(defn validate-read-string [src]
+  (try
+    (read-string src)
+    (catch Throwable e {:result :not-valid-clojure-form :reason (str "caught exception: " (.getMessage e))})))
+
+;;(parse-error? {:result :not-valid-clojure-form})
+
+(defn validate-fn [src]
+  (let [form (validate-read-string src)]
+    (if (parse-error? form)
+      form
+      (let [{res-validation :result :as val-form} (validate-form form)]
+       (if (= res-validation :ok)
+         (validate-compile-exec form)
+         val-form)
+       ))))
+
+;;(validate-fn random-f-src)
+;;(validate-fn "#(+ 1 1)")
+;;
+;;(validate-fn "(+ 1 1)")
+;;(validate-fn "(fn [a] (+ 1 1))")
+;;(validate-fn "(fn name [a] (+ 1 1))")
+;;(validate-fn "(fn name [a] (1 1))")
+;;(validate-fn "(fn name [a] (1 1)")
+;;(eval (read-string "(fn name [a] (1 1)"))
+
+;;(read-string "#(+ 1 1)")
+;;(read-string random-f-src)
 
 (defmacro with-time-assoced
   "Evaluates exprs in a context in which *out* is bound to a fresh
@@ -181,10 +252,12 @@
 ;;(delete-result-in-atom [{:id "a"}])
 
 
-(defn save-function [{{id :id :as function} :body :as req}]
+(defn save-function [{{id :id fn :fn :as function} :body :as req}]
   (let [{login :identity} (friend/current-authentication req)
-        f-with-identity (assoc function :login login)]
+        f-with-identity (assoc function :login login)
+        {:keys [result reason] :as validation-result} (validate-fn fn)]
     (cond
+     (not= result :ok) validation-result
      (nil? login) {:return "function cannot be added anonymously. Please login with the openId above"}
      (duplicate-function-in-atom? f-with-identity)
      {:return (str "function name " id " is already owned by a different user")}
@@ -214,9 +287,9 @@
   (let [match (select2functions @database)]
    (when match
      (let [[{name1 :login fn-src1 :fn id1 :id} {name2 :name fn-src2 :fn id2 :id}] match
-          f1 (dbg (compile-fn nil (dbg fn-src1)))
-          f2 (dbg (compile-fn nil fn-src2))
-          result (with-time-assoced (play-game {:board (initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2}))
+           f1 (compile-fn nil fn-src1)
+           f2 (compile-fn nil fn-src2)
+          result (with-time-assoced (chess/play-game {:board (chess/initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2}))
           res (save-result (merge result {:id1 id1 :id2 id2}))
           ]
        (println result)
