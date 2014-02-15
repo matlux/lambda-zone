@@ -121,6 +121,11 @@
 
 ;(str @database)
 
+
+
+(defn eval-form-safely [form]
+  (fn [in] ((chess/sb) (list form in))))
+
 (defn compile-fn-verbosed [f src]
   (if (nil? f)
     (chess/wrapper-display-f (eval (read-string src)))
@@ -130,7 +135,8 @@
      compile-fn nil src)
   ([f src]
      (if (nil? f)
-       (eval (read-string src))
+       (eval-form-safely (read-string src))
+       ;;(fn [in] ((chess/sb) (list (read-string src) in)));; (fn [in] ((sb) (list random-f-form in)))
        f)))
 
 (defn single-param? [param]
@@ -141,16 +147,18 @@
   (map? form))
 
 (defn validate-form [form]
-  (let [;;form (read-string src)
-        [fn-exp & sx] form
-        [name & sx2] (if (symbol? (first sx)) sx (conj sx nil)  )
-        ]
-    (cond (and (not= fn-exp 'fn) (not= fn-exp 'fn*)) {:result "submitted code is not a function" :reason "fn of fn* missing at beginning of function"}
-          (or
-           (and (list? (first sx2)) (every? #(not (single-param? %)) sx2))
-           (not (single-param? (first sx2)))) {:result "function should accept one argument"}
+  (if (coll? form)
+    (let [ ;;form (read-string src)
+         [fn-exp & sx] form
+         [name & sx2] (if (symbol? (first sx)) sx (conj sx nil)  )
+         ]
+     (cond (and (not= fn-exp 'fn) (not= fn-exp 'fn*)) {:result "submitted code is not a function" :reason "fn of fn* missing at beginning of function"}
+           (or
+            (and (list? (first sx2)) (every? #(not (single-param? %)) sx2))
+            (not (single-param? (first sx2)))) {:result "function should accept one argument"}
            :else {:result :ok})
-    ))
+     )
+    {:result :not-valid-function :reason "define an fn form"}))
 
 (defn evaluate [form]
   (try
@@ -198,6 +206,8 @@
 ;;(validate-fn "(fn name [a] (+ 1 1))")
 ;;(validate-fn "(fn name [a] (1 1))")
 ;;(validate-fn "(fn name [a] (1 1)")
+;;(validate-fn "1")
+;;(validate-fn "{a b c d}")
 ;;(eval (read-string "(fn name [a] (1 1)"))
 
 ;;(read-string "#(+ 1 1)")
