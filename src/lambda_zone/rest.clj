@@ -1,6 +1,7 @@
 (ns lambda-zone.rest
   (:use [ring.middleware.reload]
-        [ring.util.response])
+        ;;[ring.util.response]
+        )
   (:require [clojure.math.numeric-tower :as math]
             [clj-chess-engine.core :as chess]
             [lambda-zone.backend :as back]
@@ -9,7 +10,8 @@
             [compojure.core
              :as c-core
              :refer [defroutes GET POST PUT DELETE HEAD OPTIONS PATCH ANY]]
-            [compojure.route :as c-route]
+            [compojure.route :as c-route :refer [resources]]
+            [ring.util.response :refer [response]]
             [ring.server.standalone :as server]
             [ring.middleware.json :as ring-json]
                         [ring.util.response :as resp]
@@ -19,12 +21,17 @@
             (cemerick.friend [workflows :as workflows]
                              [credentials :as creds]
                              [openid :as openid])
-            [hiccup.page :as h]
+            [chord.http-kit :refer [with-channel ;;wrap-websocket-handler
+                                    ]]
+            [clojure.core.async :refer [<! >! put! take! close! go-loop]]
+            ;;[clojure.core.async :as a]
+            [hiccup.page :as h :refer [html5 include-js]]
+            ;;[hiccup.page :refer [html5 include-js]]
             [hiccup.element :as e]
             [lambda-zone.misc :as misc]
-            :reload-all)
+            ;;:reload-all
+            )
   (:import clojure.lang.PersistentVector))
-
 
 (def user-table (atom [{:login "mathieu", :id "rabbit", :fn "(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]\n  (let [v (into [] valid-moves)\n        iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]\n\n    (println (if am-i-white? \"white: \" \"black: \"))\n    (println \"valid moves:\" valid-moves)\n    (println \"iteration:\" iteration)\n    (let [move (rand-int (count valid-moves))]\n      (println \"choosen move:\" (get v move))\n      {:move (get v move) :state iteration})) )"}]))
 
@@ -49,7 +56,6 @@
                                          ["Your OpenID identity" (str (subs v 0 (* (count v) 2/3)) "…")]
                                          [k v])]]
                        [:li [:strong (str (name k) ": ")] v])]]
-
                )
              [:div
               [:p "anonymous user"]
@@ -103,17 +109,47 @@
 
    (submit-function req)
 
+   [:div#content]
+
    [:h3 "Logging out"]
    [:p (e/link-to (misc/context-uri req "logout") "Click here to log out") "."])))
 
+
+;; (defn ws-handler [req]
+;;   (with-channel req ws
+;;     (println "Opened connection from" (:remote-addr req))
+;;     (go-loop []
+;;       (when-let [{:keys [message]} (<! ws)]
+;;         (println "Message received test+++:" message)
+;;         (>! ws (format "You said hiya: '%s' at %s." message (java.util.Date.)))
+;;         (recur)))))
+
+(defn page-frame []
+  (html5
+   [:head
+    [:title "Chord Example"]
+    (include-js "/js/chord-example.js")]
+   [:body [:div#content]]))
+
+(defn ws-handler [req]
+  (with-channel req ws
+    (println "Opened connection from" (:remote-addr req))
+    (go-loop []
+      (when-let [{:keys [message]} (<! ws)]
+        (println "Message received test+++:" message)
+        (>! ws (format "You said hiya: '%s' at %s." message (java.util.Date.)))
+        (recur)))))
 
 (defroutes api
   (GET "/" req (home-page req))
   (GET "/function/:id" [id] (response (back/retrieve-function id)))
   (PUT "/function" req (response (back/save-function req)))
-  (c-route/resources "/"))
+  (GET "/ws" [] ws-handler)
+  (c-route/resources "/js" {:root "js"})
+  (c-route/resources "/")
+  )
 
-;;
+
 (def app-routes
   (->
    (friend/authenticate
@@ -132,21 +168,37 @@
       (wrap-reload '(one-route.core))
       (ring-json/wrap-json-body {:keywords? true})
       (ring-json/wrap-json-response)
+      ;;(wrap-websocket-handler)
       ))
 
-(defn start-server []
-  (server/serve (var app-routes) {:port 8070
-                           :join? false
-                       :open-browser? false}))
 
-(defn -main []
-  (start-server))
+(defroutes app-routes-old
+  (GET "/" [] (response (page-frame)))
+  (GET "/ws" [] ws-handler)
+  (resources "/js" {:root "js"}))
+
+;; (def app-routes
+;;   (->
+;;    #'api
+;;    wrap-websocket-handler
+;;       ))
+
+;; (defn start-server []
+;;   (server/serve (var app-routes) {:port 8070
+;;                            :join? false
+;;                        :open-browser? false}))
+
+;; (defn -main []
+;;   (start-server))
 
 ;;
 ;;(def server (start-server))
 
 
 ;;@user-table
- (def app
-   #'app-routes)
 ;; (defonce web-server (http-kit/run-server #'app {:port 3000 :join? false}))
+
+
+
+(def app
+  #'app-routes)

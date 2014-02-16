@@ -26,6 +26,7 @@
                  ;; only used to discover demo app namespaces
                  [bultitude "0.1.7"]
 
+                 [hiccup "1.0.4"]
                  [jarohen/chord "0.2.1"]
 
                  [org.clojure/clojurescript "0.0-1913"]

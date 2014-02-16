@@ -160,14 +160,14 @@
      )
     {:result :not-valid-function :reason "define an fn form"}))
 
-(defn evaluate [form]
+(defn evaluate-and-catch [form]
   (try
-    (eval form)
+    (eval-form-safely form)
     (catch Throwable e {:result :failed-evaluation :reason (str "caught exception: " (.getMessage e))})))
 
 (defn validate-compile-exec [form]
   (try
-    (let [evaled (evaluate form)] ;;;super dangerous TODO: use clojail
+    (let [evaled (evaluate-and-catch form)] ;;; it's ok now we use clojail
       (if (:result evaled)
         evaled
         (let [

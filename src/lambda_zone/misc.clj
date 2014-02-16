@@ -1,5 +1,6 @@
 (ns lambda-zone.misc
-  (:require [clojure.string :as str])
+  (:require [clojure.string :as str]
+            [hiccup.page :refer [include-js]])
   (:import java.net.URI))
 
 (def github-base-url
@@ -84,6 +85,7 @@
          [:link {:href "/css/bootstrap.min.css" :rel "stylesheet" :media "screen"}]
          [:script {:src "/js/jquery.min.js" :type "text/javascript"}]
          [:script {:src "/js/bootstrap.min.js" :type "text/javascript"}]
+         (include-js "/js/chord-example.js")
          [:script jquery]])
 
 (defn pretty-body
