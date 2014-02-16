@@ -33,6 +33,8 @@
                  [org.clojure/tools.reader "0.7.8"]
 
                  [prismatic/dommy "0.1.2"]
+
+                 [org.clojure/tools.trace "0.7.5"]
                  ]
   :plugins [[lein-pdo "0.1.1"]
             [jarohen/lein-frodo "0.2.0"]
