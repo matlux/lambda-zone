@@ -3,7 +3,10 @@
             [clj-chess-engine.core :as chess]
             [clojure.string :as str]
             [clojure.set :as se]
-            [cemerick.friend :as friend] :reload-all)
+            [cemerick.friend :as friend]
+            [clojure.core.async :refer [<! >! >!! put! take! close! chan go go-loop]]
+            ;:reload-all
+            )
   (:import clojure.lang.PersistentVector))
 
 
@@ -236,12 +239,13 @@
 (declare schedule-recomputation)
 
 
-(defn save-function-in-atom [{id :id login :login :as function}]
-  (swap! database (fn [db]
-                    {:matches (remove (fn [{:keys [id1 id2]}] (or (= id1 id) (= id2 id))) (:matches db))
-                     :contenders (conj (remove-f-id-in-atom function (:contenders db)) function)}))
-  (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
-  (schedule-recomputation)
+(defn save-function-in-atom [{id :id login :login c :channel :as function}]
+  (let [cleaned-f (dissoc function :channel)]
+    (swap! database (fn [db]
+                     {:matches (remove (fn [{:keys [id1 id2]}] (or (= id1 id) (= id2 id))) (:matches db))
+                      :contenders (conj (remove-f-id-in-atom function (:contenders db)) cleaned-f)}))
+    (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
+    (schedule-recomputation c))
   )
 
 (defn retrieve-function-in-atom [{id :id login :login :as function}]
@@ -262,13 +266,13 @@
 ;;(delete-result-in-atom [{:id "a"}])
 
 
-(defn save-function [{{id :id fn :fn :as function} :body :as req}]
+(defn save-function [{{id :id fn :fn :as function} :body :as req} c]
   (let [{login :identity} (friend/current-authentication req)
-        f-with-identity (assoc function :login login)
+        f-with-identity (assoc function :login login :channel c)
         {:keys [result reason] :as validation-result} (validate-fn fn)]
     (cond
      (not= result :ok) validation-result
-     (nil? login) {:return "function cannot be added anonymously. Please login with the openId above"}
+     ;;(nil? login) {:return "function cannot be added anonymously. Please login with the openId above"}
      (duplicate-function-in-atom? f-with-identity)
      {:return (str "function name " id " is already owned by a different user")}
      :else (do
@@ -293,21 +297,26 @@
   )
 
 
-(defn tournament []
+(defn tournament [c]
   (let [match (select2functions @database)]
    (when match
      (let [[{name1 :login fn-src1 :fn id1 :id} {name2 :name fn-src2 :fn id2 :id}] match
+           _  (println "found to new match to play: " id1 "against" id2)
+           ;;_ (>!! c match)
            f1 (compile-fn nil fn-src1)
            f2 (compile-fn nil fn-src2)
-          result (with-time-assoced (chess/play-game {:board (chess/initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2}))
-          res (save-result (merge result {:id1 id1 :id2 id2}))
-          ]
-       (println result)
-       (recur)))))
+           result (with-time-assoced (chess/play-game {:board (chess/initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2 :channel c}))
+           result-with-id (merge result {:id1 id1 :id2 id2})
+           res (save-result result-with-id)
+           ]
+       (println "game finished. About to write result into channel:" c)
+       (>!! c (dissoc result-with-id :history :board))
+       (println "message was sent to channel" c)
+       (recur c)))))
 
 (def tournament-agent (agent {}))
 
-(defn schedule-recomputation []  (send tournament-agent (fn [_] (tournament))))
+(defn schedule-recomputation [c]  (send tournament-agent (fn [_] (tournament c))))
 
 
 

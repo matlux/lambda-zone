@@ -23,12 +23,14 @@
                              [openid :as openid])
             [chord.http-kit :refer [with-channel ;;wrap-websocket-handler
                                     ]]
-            [clojure.core.async :refer [<! >! put! take! close! go-loop]]
+            [clojure.core.async :refer [<! >! put! take! close! chan mult go go-loop tap untap]]
             ;;[clojure.core.async :as a]
             [hiccup.page :as h :refer [html5 include-js]]
             ;;[hiccup.page :refer [html5 include-js]]
             [hiccup.element :as e]
             [lambda-zone.misc :as misc]
+
+
             ;;:reload-all
             )
   (:import clojure.lang.PersistentVector))
@@ -131,24 +133,38 @@
     (include-js "/js/chord-example.js")]
    [:body [:div#content]]))
 
+(def source (chan))
+(def mc (mult source))
+
 (defn ws-handler [req]
   (with-channel req ws
     (println "Opened connection from" (:remote-addr req))
-    (go-loop []
-      (when-let [{:keys [message]} (<! ws)]
-        (println "Message received test+++:" message)
-        (>! ws (format "You said hiya: '%s' at %s." message (java.util.Date.)))
-        (recur)))))
+    (let [sink (chan)]
+      (tap mc sink)
+      (go-loop []
+        (println "about to wait for message")
+        (when-let [{:keys [message move score id1 id2] :as val} (<! sink)]
+          (println "Message received test+++:" {:move move :score score  :id1 id1 :id2 id2})
+          (>! ws (str {:msg val :time  (format "at %s." (java.util.Date.))}))
+          (recur))))))
 
 (defroutes api
   (GET "/" req (home-page req))
   (GET "/function/:id" [id] (response (back/retrieve-function id)))
-  (PUT "/function" req (response (back/save-function req)))
+  (PUT "/function" req (response (back/save-function req source)))
   (GET "/ws" [] ws-handler)
   (c-route/resources "/js" {:root "js"})
   (c-route/resources "/")
   )
 
+(macroexpand '(defroutes api
+  (GET "/" req (home-page req))
+  (GET "/function/:id" [id] (response (back/retrieve-function id)))
+  (PUT "/function" req (response (back/save-function req source)))
+  (GET "/ws" [] ws-handler)
+  (c-route/resources "/js" {:root "js"})
+  (c-route/resources "/")
+  ))
 
 (def app-routes
   (->
