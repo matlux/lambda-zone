@@ -23,7 +23,7 @@
                              [openid :as openid])
             [chord.http-kit :refer [with-channel ;;wrap-websocket-handler
                                     ]]
-            [clojure.core.async :refer [<! >! put! take! close! chan mult go go-loop tap untap]]
+            [clojure.core.async :refer [<! >! put! take! close! chan mult go go-loop tap untap alts!]]
             ;;[clojure.core.async :as a]
             [hiccup.page :as h :refer [html5 include-js]]
             ;;[hiccup.page :refer [html5 include-js]]
@@ -136,17 +136,21 @@
 (def source (chan))
 (def mc (mult source))
 
-(defn ws-handler [req]
+(defn ws-handler [{:keys [async-channel remote-addr] :as req}]
   (with-channel req ws
-    (println "Opened connection from" (:remote-addr req))
+    (println "Opened connection from" async-channel remote-addr)
     (let [sink (chan)]
       (tap mc sink)
       (go-loop []
-        (println "about to wait for message")
-        (when-let [{:keys [message move score id1 id2] :as val} (<! sink)]
-          (println "Message received test+++:" {:move move :score score  :id1 id1 :id2 id2})
-          (>! ws (str {:msg val :time  (format "at %s." (java.util.Date.))}))
-          (recur))))))
+        (println "about to wait for message" async-channel)
+        (let [[{:keys [board message move score id1 id2] :as val} c]  (alts! [ws sink])]
+          (when val
+            (println "Message received test+++:" val "from" c "on" async-channel)
+            (>! ws (str {:msg val :time  (format "at %s." (java.util.Date.))}))
+            (recur))
+          (println "exiting ws" async-channel)
+          (untap mc sink)
+          :exiting)))))
 
 (defroutes api
   (GET "/" req (home-page req))
@@ -181,7 +185,7 @@
                              :openid-uri "/login"
                              :credential-fn identity)]})
       (handler/site)
-      (wrap-reload '(one-route.core))
+      (wrap-reload '(lambda-zone.rest))
       (ring-json/wrap-json-body {:keywords? true})
       (ring-json/wrap-json-response)
       ;;(wrap-websocket-handler)
