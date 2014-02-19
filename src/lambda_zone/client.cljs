@@ -13,11 +13,28 @@
      (doto (node [:input {:type :text :size 50}])
        bind-input!)]
     [:div
-     [:h3 "Messages from the server pooopoo:"]
+     [:h3 "test" (pr-str (js->clj  "{
+                     list: [1,2,3,4,5],
+                     blah: \"vtha\",
+                     o: { answer: 42 }
+                   }"))]
+     [:h3 "Messages from the server:"]
      (doto (node [:div])
        bind-list!)])))
 
+(defn deserialize-msg [msg]
+  ((js->clj (JSON/parse (:message msg))) "msg"))
+
 (defn render-list [msgs]
+  (node
+   [:ul
+    (if (seq msgs)
+      (let [msg (first msgs)
+            d-msg (deserialize-msg msg)]
+        [:li (pr-str (d-msg "board"))])
+      [:li "None yet."])]))
+
+(defn render-list-old [msgs]
   (node
    [:ul
     (if (seq msgs)

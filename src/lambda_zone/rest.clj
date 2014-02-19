@@ -30,6 +30,8 @@
             [hiccup.element :as e]
             [lambda-zone.misc :as misc]
 
+            ;;[clojure.data.json :as json]
+            [cheshire.core :as json]
 
             ;;:reload-all
             )
@@ -133,8 +135,14 @@
     (include-js "/js/chord-example.js")]
    [:body [:div#content]]))
 
-(def source (chan))
-(def mc (mult source))
+(def src-c (chan))
+(def mc (mult src-c))
+
+(defn to-string [board]
+  (into []  (map #(.toString %) board)))
+
+;;
+
 
 (defn ws-handler [{:keys [async-channel remote-addr] :as req}]
   (with-channel req ws
@@ -143,10 +151,11 @@
       (tap mc sink)
       (go-loop []
         (println "about to wait for message" async-channel)
-        (let [[{:keys [board message move score id1 id2] :as val} c]  (alts! [ws sink])]
+        (let [[{:keys [board message move score id1 id2 iteration] :as val} c]  (alts! [ws sink])]
           (when val
             (println "Message received test+++:" val "from" c "on" async-channel)
-            (>! ws (str {:msg val :time  (format "at %s." (java.util.Date.))}))
+            (let [val2 {:board (to-string board) :iteration iteration :time  (str (format "at %s." (java.util.Date.)))}]
+              (>! ws (json/generate-string {:msg val2 })))
             (recur))
           (println "exiting ws" async-channel)
           (untap mc sink)
@@ -155,7 +164,7 @@
 (defroutes api
   (GET "/" req (home-page req))
   (GET "/function/:id" [id] (response (back/retrieve-function id)))
-  (PUT "/function" req (response (back/save-function req source)))
+  (PUT "/function" req (response (back/save-function req src-c)))
   (GET "/ws" [] ws-handler)
   (c-route/resources "/js" {:root "js"})
   (c-route/resources "/")

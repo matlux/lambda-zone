@@ -35,6 +35,10 @@
                  [prismatic/dommy "0.1.2"]
 
                  [org.clojure/tools.trace "0.7.5"]
+
+                 [org.clojure/data.json "0.2.4"]
+
+                 [cheshire "5.3.1"]
                  ]
   :plugins [[lein-pdo "0.1.1"]
             [jarohen/lein-frodo "0.2.0"]
