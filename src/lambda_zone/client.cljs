@@ -5,6 +5,21 @@
   (:require-macros [cljs.core.async.macros :refer [go]]
                    [dommy.macros :refer [node sel1]]))
 
+(defn c1dto2d [i]
+  (vector (int (/ i 8)) (mod i 8)))
+
+
+(defn render-board-old [board-state]
+  (let [line "+---+---+---+---+---+---+---+---+"
+        pieces-pos board-state ;(into {} board-state)
+        ]
+    (apply str "\n" line "\n"
+           (map #(let [pos (c1dto2d (dec %))
+                       c (get pieces-pos pos " ")]
+                   (if (zero? (mod % 8))
+                           (format "| %s |\n%s\n" c line)
+                           (format "| %s " c))) (range 1 65)))))
+
 (defn render-page [bind-input! bind-list!]
   (node
    (list
@@ -25,13 +40,19 @@
 (defn deserialize-msg [msg]
   ((js->clj (JSON/parse (:message msg))) "msg"))
 
+(defn render-board [d-msg]
+  (let [b (partition 8 (d-msg "board"))]
+    (for [col b]
+      [:li (pr-str col) ]
+      )))
+
 (defn render-list [msgs]
   (node
    [:ul
     (if (seq msgs)
       (let [msg (first msgs)
             d-msg (deserialize-msg msg)]
-        [:li (pr-str (d-msg "board"))])
+        (render-board d-msg))
       [:li "None yet."])]))
 
 (defn render-list-old [msgs]

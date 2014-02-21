@@ -38,6 +38,8 @@
 
                  [org.clojure/data.json "0.2.4"]
 
+                 [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
+
                  [cheshire "5.3.1"]
                  ]
   :plugins [[lein-pdo "0.1.1"]

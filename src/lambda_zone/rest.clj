@@ -23,7 +23,7 @@
                              [openid :as openid])
             [chord.http-kit :refer [with-channel ;;wrap-websocket-handler
                                     ]]
-            [clojure.core.async :refer [<! >! put! take! close! chan mult go go-loop tap untap alts!]]
+            [clojure.core.async :refer [<! >! put! take! timeout close! chan mult sliding-buffer go go-loop tap untap alts! alts!! buffer]]
             ;;[clojure.core.async :as a]
             [hiccup.page :as h :refer [html5 include-js]]
             ;;[hiccup.page :refer [html5 include-js]]
@@ -135,7 +135,10 @@
     (include-js "/js/chord-example.js")]
    [:body [:div#content]]))
 
-(def src-c (chan))
+(def buf (buffer 1))
+;;(.full? buf)
+
+(def src-c (chan buf))
 (def mc (mult src-c))
 
 (defn to-string [board]
@@ -146,19 +149,22 @@
 
 (defn ws-handler [{:keys [async-channel remote-addr] :as req}]
   (with-channel req ws
-    (println "Opened connection from" async-channel remote-addr)
-    (let [sink (chan)]
+    (println "Opened connection from" async-channel)
+    (let [sink (chan (sliding-buffer 1))]
       (tap mc sink)
       (go-loop []
         (println "about to wait for message" async-channel)
-        (let [[{:keys [board message move score id1 id2 iteration] :as val} c]  (alts! [ws sink])]
+        (let [;;[{:keys [board message move score id1 id2 iteration] :as val} c]  (alts! [ws sink])
+              {:keys [board message move score id1 id2 iteration] :as val}  (<! sink)
+              ]
           (when val
-            (println "Message received test+++:" val "from" c "on" async-channel)
+            (println "Message received test+++:" [board iteration] "from"  "on" async-channel)
             (let [val2 {:board (to-string board) :iteration iteration :time  (str (format "at %s." (java.util.Date.)))}]
               (>! ws (json/generate-string {:msg val2 })))
             (recur))
-          (println "exiting ws" async-channel)
+          (println "about to untap" async-channel)
           (untap mc sink)
+          (println "exiting ws" async-channel " " (alts!! [sink (timeout 1000)]))
           :exiting)))))
 
 (defroutes api
