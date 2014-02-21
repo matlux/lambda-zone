@@ -221,9 +221,13 @@
   StringWriter.  Returns the assoced map with :time -> created by any nested printing
   calls."
   [& body]
-  `(let [s# (new java.io.StringWriter)]
+  `(let [s# (new java.io.StringWriter)
+         oldout# *out*]
      (binding [*out* s#]
-       (assoc (time ~@body) :time (str s#)))))
+       (assoc (time (binding [*out* oldout#] ~@body)) :time (str s#)))))
+
+
+;;(with-time-assoced (println "hello"))
 
 (defn save-result [result]
   (let [{s :score res :result id1 :id1 id2 :id2}  result
