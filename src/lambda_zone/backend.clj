@@ -317,7 +317,7 @@
            res (save-result result-with-id)
            ]
        (println "game finished. About to write result into channel:" c)
-       (>!! c (dissoc result-with-id :history :board))
+       (>!! c (merge (dissoc result-with-id :history) {:msg-type :publish-game-result}))
        (println "message was sent to channel" c)
        (recur c)))))
 

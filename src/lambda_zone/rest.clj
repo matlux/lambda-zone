@@ -155,11 +155,11 @@
       (go-loop []
         (println "about to wait for message" async-channel)
         (let [;;[{:keys [board message move score id1 id2 iteration] :as val} c]  (alts! [ws sink])
-              {:keys [board message move score id1 id2 iteration] :as val}  (<! sink)
+              {:keys [board message move score id1 id2 iteration msg-type game-id] :as val}  (<! sink)
               ]
           (when val
             (println "Message received test+++:" [board iteration] "from"  "on" async-channel)
-            (let [val2 {:board (to-string board) :iteration iteration :id1 id1 :id2 id2 :time (str (format "at %s." (java.util.Date.)))}]
+            (let [val2 {:board (to-string board) :iteration iteration :id1 id1 :id2 id2 :msg-type msg-type :game-id game-id :time (str (format "at %s." (java.util.Date.)))}]
               (>! ws (json/generate-string {:msg val2 })))
             (recur))
           (println "about to untap" async-channel)
