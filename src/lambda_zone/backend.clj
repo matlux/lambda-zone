@@ -126,8 +126,11 @@
 
 
 
+
+;; (defn eval-form-safely [form]
+;;   (fn [in] ((chess/sb) (list form in))))
 (defn eval-form-safely [form]
-  (fn [in] ((chess/sb) (list form in))))
+  (chess/sb form 5000))
 
 (defn compile-fn-verbosed [f src]
   (if (nil? f)

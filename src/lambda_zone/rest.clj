@@ -159,7 +159,7 @@
               ]
           (when val
             (println "Message received test+++:" [board iteration] "from"  "on" async-channel)
-            (let [val2 {:board (to-string board) :iteration iteration :time  (str (format "at %s." (java.util.Date.)))}]
+            (let [val2 {:board (to-string board) :iteration iteration :id1 id1 :id2 id2 :time (str (format "at %s." (java.util.Date.)))}]
               (>! ws (json/generate-string {:msg val2 })))
             (recur))
           (println "about to untap" async-channel)

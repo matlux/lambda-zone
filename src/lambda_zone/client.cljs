@@ -97,8 +97,16 @@
    [:ul
     (if (seq msgs)
       (let [msg (first msgs)
-            d-msg (deserialize-msg msg)]
-        (render-board (d-msg "board")))
+            d-msg (deserialize-msg msg)
+            board (d-msg "board")
+            i (d-msg "iteration")
+            t (d-msg "time")
+            ]
+        (list (render-board board)
+              [:div (str i " / \"" (d-msg "id1") "\" vs \"" (d-msg "id2") "\"")]
+              [:div (str t)]
+              [:div (str d-msg)])
+        )
       (render-board (initial-board))
       ;[:li "None yet."]
       )]))
