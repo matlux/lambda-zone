@@ -1,24 +1,66 @@
 (ns lambda-zone.client
   (:require [chord.client :refer [ws-ch]]
             [cljs.core.async :refer [<! >! put! take! close! timeout]]
-            [dommy.core :as d])
+            [dommy.core :as d]
+            [goog.string.format :as gformat])
   (:require-macros [cljs.core.async.macros :refer [go]]
                    [dommy.macros :refer [node sel1]]))
+
+
+(defn initial-board []
+  [\r \n \b \q \k \b \n \r
+   \p \p \p \p \p \p \p \p
+   \- \- \- \- \- \- \- \-
+   \- \- \- \- \- \- \- \-
+   \- \- \- \- \- \- \- \-
+   \- \- \- \- \- \- \- \-
+   \P \P \P \P \P \P \P \P
+   \R \N \B \Q \K \B \N \R])
 
 (defn c1dto2d [i]
   (vector (int (/ i 8)) (mod i 8)))
 
+(defn char2state [pieces-list]
+  (into {} (filter #(not= \- (second %)) (map #(vector (c1dto2d %1) %2 ) (range 64) pieces-list))))
 
-(defn render-board-old [board-state]
-  (let [line "+---+---+---+---+---+---+---+---+"
-        pieces-pos board-state ;(into {} board-state)
-        ]
-    (apply str "\n" line "\n"
-           (map #(let [pos (c1dto2d (dec %))
-                       c (get pieces-pos pos " ")]
-                   (if (zero? (mod % 8))
-                           (format "| %s |\n%s\n" c line)
-                           (format "| %s " c))) (range 1 65)))))
+(def piece2img
+  {
+   "B" "WB"
+   "K" "WK"
+   "Q" "WQ"
+   "N" "WN"
+   "P" "WP"
+   "R" "WR"
+   "b" "BB"
+   "k" "BK"
+   "q" "BQ"
+   "n" "BN"
+   "p" "BP"
+   "r" "BR"
+   })
+
+(defn render-piece [piece]
+  (let [img (piece2img piece)]
+    (if (nil? img)
+      [:img { :width "32" :height "32"}]
+      [:img {:src (str "/images/" img ".png") :alt "white bishop" :width "32" :height "32"}])))
+
+(defn render-board [board-state]
+  (node
+   [:div
+    (let [line "+------+------+------+------+------+------+------+------+"
+          pieces-pos (char2state board-state)         ;(into {} board-state)
+          ]
+      (list
+       [:div line]
+       [:div (map #(let [pos (c1dto2d (dec %))
+                           c (get pieces-pos pos "-")]
+                       (if (zero? (mod % 8))
+                         (list "| " (render-piece c) "|" [:div line])
+                         (list "| " (render-piece c) )
+                         ;;(gformat "| %s |\n%s\n" c line)
+                         ;;(gformat "| %s " c)
+                         )) (range 1 65))]))]))
 
 (defn render-page [bind-input! bind-list!]
   (node
@@ -28,11 +70,7 @@
      (doto (node [:input {:type :text :size 50}])
        bind-input!)]
     [:div
-     [:h3 "test" (pr-str (js->clj  "{
-                     list: [1,2,3,4,5],
-                     blah: \"vtha\",
-                     o: { answer: 42 }
-                   }"))]
+
      [:h3 "Messages from the server:"]
      (doto (node [:div])
        bind-list!)])))
@@ -40,8 +78,8 @@
 (defn deserialize-msg [msg]
   ((js->clj (JSON/parse (:message msg))) "msg"))
 
-(defn render-board [d-msg]
-  (let [b (partition 8 (d-msg "board"))]
+(defn render-board-old [board]
+  (let [b (partition 8 board)]
     (for [col b]
       [:li (pr-str col) ]
       )))
@@ -52,8 +90,10 @@
     (if (seq msgs)
       (let [msg (first msgs)
             d-msg (deserialize-msg msg)]
-        (render-board d-msg))
-      [:li "None yet."])]))
+        (render-board (d-msg "board")))
+      (render-board (initial-board))
+      ;[:li "None yet."]
+      )]))
 
 (defn render-list-old [msgs]
   (node
