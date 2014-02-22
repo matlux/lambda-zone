@@ -39,11 +39,17 @@
    "r" "BR"
    })
 
-(defn render-piece [piece]
-  (let [img (piece2img piece)]
+(defn render-piece [piece background]
+  (let [img (piece2img piece)
+        b (if background "white" "gray")]
     (if (nil? img)
-      [:img { :width "32" :height "32"}]
-      [:img {:src (str "/images/" img ".png") :alt "white bishop" :width "32" :height "32"}])))
+      [:img { :width "32" :height "32" :style (str "background-color:" b ";")}]
+      [:img {:src (str "/images/" img ".png") :alt "white bishop" :width "32" :height "32" :style (str "background-color:" b ";")}])))
+
+(defn render-separator [background]
+  (let [b (if background "white" "gray")
+        ]
+    [:img { :width "1" :height "32" :style (str "background-color:" b ";")}] ))
 
 (defn render-board [board-state]
   (node
@@ -52,12 +58,14 @@
           pieces-pos (char2state board-state)         ;(into {} board-state)
           ]
       (list
-       [:div line]
+       ;[:div line]
        [:div (map #(let [pos (c1dto2d (dec %))
-                           c (get pieces-pos pos "-")]
+                         [x y] pos
+                         c (get pieces-pos pos "-")
+                         b (even? (+ x y))]
                        (if (zero? (mod % 8))
-                         (list "| " (render-piece c) "|" [:div line])
-                         (list "| " (render-piece c) )
+                         (list (render-piece c b) [:div])
+                         (list (render-piece c b) (render-separator b) )
                          ;;(gformat "| %s |\n%s\n" c line)
                          ;;(gformat "| %s " c)
                          )) (range 1 65))]))]))
