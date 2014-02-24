@@ -83,8 +83,13 @@
      (doto (node [:div])
        bind-list!)])))
 
+(defn keywordize-map [my-map]
+  (into {}
+  (for [[k v] my-map]
+    [(keyword k) v])))
+
 (defn deserialize-msg [msg]
-  ((js->clj (JSON/parse (:message msg))) "msg"))
+  ((js->clj (JSON/parse (:message msg)) :keywordize-keys true) :msg))
 
 (defn render-board-old [board]
   (let [b (partition 8 board)]
@@ -92,24 +97,86 @@
       [:li (pr-str col) ]
       )))
 
-(defn render-list [msgs]
+
+(defn render-in-game-update [{:keys [board id1 id2 iteration time] :as d-msg}]
+  (node
+   [:ul
+
+    (let []
+      ;;(.log js/console (pr-str iteration))
+      (list (render-board board)
+            [:div (str iteration " / \"" id1 "\" vs \"" id2 "\"")]
+            [:div (str time)]
+            ;;[:div (str d-msg)]
+            )
+      )
+
+                                        ;[:li "None yet."]
+    ]))
+
+(defn dispatch-old [msgs]
   (node
    [:ul
     (if (seq msgs)
       (let [msg (first msgs)
-            d-msg (deserialize-msg msg)
-            board (d-msg "board")
-            i (d-msg "iteration")
-            t (d-msg "time")
+            {:keys [msg-type] :as d-msg} (deserialize-msg msg)
+
             ]
-        (list (render-board board)
-              [:div (str i " / \"" (d-msg "id1") "\" vs \"" (d-msg "id2") "\"")]
-              [:div (str t)]
-              [:div (str d-msg)])
+        ;;(.log js/console  (str "dispatching:" (pr-str d-msg )))
+        (case msg-type
+          "in-game-update" (do (.log js/console  (str "in-game-update:" (pr-str d-msg )))
+                               (render-in-game-update d-msg))
+          "full-results" (do (.log js/console  (str "full-results:" (pr-str d-msg )))
+                            [:div "99999"])
+          (render-board (initial-board)))
+
         )
-      (render-board (initial-board))
+      ;;(render-board (initial-board))
       ;[:li "None yet."]
       )]))
+
+(defn dispatch [msgs]
+  (if (seq msgs)
+    (let [msg (first msgs)
+          {:keys [msg-type] :as d-msg} (deserialize-msg msg)
+
+          ]
+      ;;(.log js/console  (str "dispatching:" (pr-str d-msg )))
+      (case msg-type
+        "in-game-update" (do ;(.log js/console  (str "in-game-update:" (pr-str d-msg )))
+                             (render-in-game-update d-msg))
+
+        (render-board (initial-board)))
+
+      )
+    (render-board (initial-board))
+                                        ;[:li "None yet."]
+    ))
+
+(defn render-results [matches]
+  (node
+   [:div [:table {:class "table"}
+      (for [{:keys [id1 id2 score result]} matches]
+        [:tr [:td (str id1 " vs " id2)] [:td (pr-str score)]  [:td result]])]]))
+
+(defn dispatch2 [msgs]
+  (if (seq msgs)
+    (let [msg (first msgs)
+          {:keys [msg-type matches] :as d-msg} (deserialize-msg msg)
+
+          ]
+      (.log js/console  (str "dispatching:" (pr-str d-msg )))
+      (case msg-type
+        "full-results" (do (.log js/console  (str "full-results:" (pr-str d-msg )))
+                           (render-results matches))
+        [:div "stats default"])
+
+      )
+    (render-board (initial-board))
+                                        ;[:li "None yet."]
+    ))
+
+;;(render-board (initial-board))
 
 (defn render-list-old [msgs]
   (node
@@ -123,9 +190,18 @@
   (fn [$list]
     (add-watch msgs ::list
                (fn [_ _ _ msgs]
+                 ;;(.log js/console  (str "msgs changed:" (pr-str msgs )))
                  (->> (reverse msgs)
                       (take 10)
-                      (render-list)
+                      (dispatch)
+                      (d/replace-contents! $list))))))
+(defn list-binder2 [msgs]
+  (fn [$list]
+    (add-watch msgs ::list2
+               (fn [_ _ _ msgs]
+                 (->> (reverse msgs)
+                      (take 10)
+                      (dispatch2)
                       (d/replace-contents! $list))))))
 
 (defn input-binder [ch]
@@ -137,20 +213,34 @@
                    (d/set-value! $input ""))))
     (go (<! (timeout 200)) (.focus $input))))
 
-(defn bind-msgs [ch msgs]
+(defn bind-msgs [ch  in-game-msgs results-msgs]
   (go
    (loop []
      (when-let [msg (<! ch)]
-       (swap! msgs conj msg)
-       (recur)))))
+       (let [{:keys [msg-type] :as d-msg} (deserialize-msg msg)]
+         ;;(.log js/console  (str "dispatching:" (pr-str d-msg )))
+         (case msg-type
+           "full-results" (swap! results-msgs conj msg)
+           "in-game-update" (swap! in-game-msgs conj msg)
+           (.log js/console  (str "no dispatch for message:" (pr-str d-msg ))))
+         (recur))
+  ))))
 
 (set! (.-onload js/window)
       (fn []
         (go
-         (let [msgs (atom [])
-               ws (<! (ws-ch "ws://localhost:3000/ws"))]
-           (bind-msgs ws msgs)
+          (let [in-game-msgs (atom [])
+                results-msgs (atom [])
+               ws (<! (ws-ch "ws://localhost:3000/ws"))
+               ]
+           (bind-msgs ws in-game-msgs results-msgs)
            (d/replace-contents! (sel1 :#content)
                                 (render-page (input-binder ws)
-                                             (list-binder msgs)))
-           (reset! msgs [])))))
+                                             (list-binder in-game-msgs)))
+           (d/replace-contents! (sel1 :#content2)
+                                (render-page (input-binder ws)
+                                             (list-binder2 results-msgs)))
+           ;;(dispatch ws msgs)
+
+           (reset! in-game-msgs [])
+           (reset! results-msgs [])))))

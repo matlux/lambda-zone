@@ -130,7 +130,7 @@
 ;; (defn eval-form-safely [form]
 ;;   (fn [in] ((chess/sb) (list form in))))
 (defn eval-form-safely [form]
-  (chess/sb form 5000))
+  (chess/sb form 6000))
 
 (defn compile-fn-verbosed [f src]
   (if (nil? f)
@@ -231,6 +231,12 @@
 
 
 ;;(with-time-assoced (println "hello"))
+
+(defn load-results-from-atom []
+  (:matches @database))
+
+(defn load-results []
+  (load-results-from-atom))
 
 (defn save-result [result]
   (let [{s :score res :result id1 :id1 id2 :id2}  result

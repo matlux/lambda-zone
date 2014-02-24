@@ -23,7 +23,7 @@
                              [openid :as openid])
             [chord.http-kit :refer [with-channel ;;wrap-websocket-handler
                                     ]]
-            [clojure.core.async :refer [<! >! put! take! timeout close! chan mult sliding-buffer go go-loop tap untap alts! alts!! buffer]]
+            [clojure.core.async :refer [<! >! >!! put! take! timeout close! chan mult sliding-buffer go go-loop tap untap alts! alts!! buffer]]
             ;;[clojure.core.async :as a]
             [hiccup.page :as h :refer [html5 include-js]]
             ;;[hiccup.page :refer [html5 include-js]]
@@ -114,6 +114,7 @@
    (submit-function req)
 
    [:div#content]
+   [:div#content2]
 
    [:h3 "Logging out"]
    [:p (e/link-to (misc/context-uri req "logout") "Click here to log out") "."])))
@@ -152,6 +153,8 @@
     (println "Opened connection from" async-channel)
     (let [sink (chan (sliding-buffer 1))]
       (tap mc sink)
+      (println "sending init data")
+      (>!! ws (json/generate-string {:msg {:msg-type :full-results :matches (back/load-results)}}))
       (go-loop []
         (println "about to wait for message" async-channel)
         (let [;;[{:keys [board message move score id1 id2 iteration] :as val} c]  (alts! [ws sink])
