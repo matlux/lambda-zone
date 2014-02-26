@@ -147,6 +147,21 @@
 
 ;;
 
+(defn route-msg2client [{:keys [board message move score id1 id2 iteration msg-type matches game-id] :as msgbus}]
+  (let [in-game-update {:board (to-string board)
+                        :iteration iteration
+                        :id1 id1 :id2 id2
+                        :msg-type msg-type
+                        :game-id game-id
+                        :time (str (format "at %s." (java.util.Date.)))}
+        full-results {:matches matches
+                      :msg-type msg-type
+                      :time (str (format "at %s." (java.util.Date.)))}
+        ]
+    (case msg-type
+      :in-game-update in-game-update
+      :full-results (chess/dbg full-results)
+      {:msg-type msg-type :msg "route-msg2client didn't recognised or expect this message type"})))
 
 (defn ws-handler [{:keys [async-channel remote-addr] :as req}]
   (with-channel req ws
@@ -158,12 +173,11 @@
       (go-loop []
         (println "about to wait for message" async-channel)
         (let [;;[{:keys [board message move score id1 id2 iteration] :as val} c]  (alts! [ws sink])
-              {:keys [board message move score id1 id2 iteration msg-type game-id] :as val}  (<! sink)
+              {:keys [board iteration msg-type] :as val}  (<! sink)
               ]
           (when val
-            (println "Message received test+++:" [board iteration] "from"  "on" async-channel)
-            (let [val2 {:board (to-string board) :iteration iteration :id1 id1 :id2 id2 :msg-type msg-type :game-id game-id :time (str (format "at %s." (java.util.Date.)))}]
-              (>! ws (json/generate-string {:msg val2 })))
+            ;(println "Message received test+++:" [board iteration] "from"  "on" async-channel)
+            (>! ws (json/generate-string {:msg (route-msg2client val) }))
             (recur))
           (println "about to untap" async-channel)
           (untap mc sink)

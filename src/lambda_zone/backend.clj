@@ -321,9 +321,11 @@
            result (with-time-assoced (chess/play-game {:board (chess/initial-board) :id1 id1 :f1 f1 :id2 id2 :f2 f2 :channel c}))
            result-with-id (merge result {:id1 id1 :id2 id2})
            res (save-result result-with-id)
+           finalres (load-results)
            ]
-       (println "game finished. About to write result into channel:" c)
-       (>!! c (merge (dissoc result-with-id :history) {:msg-type :publish-game-result}))
+       (println "game finished. About to write result into channel:" c finalres)
+       ;;(>!! c (merge (dissoc result-with-id :history) {:msg-type :publish-game-result}))
+       (>!! c  {:msg-type :full-results :matches finalres})
        (println "message was sent to channel" c)
        (recur c)))))
 
