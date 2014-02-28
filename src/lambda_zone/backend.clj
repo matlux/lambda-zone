@@ -352,3 +352,29 @@
   ;;(save-function {:login "a" :id "b" :fn random-f-src })
   (send (agent {}) (do (fn [_] (tournament)) 1))
   (println "finished"))
+
+
+(defn acc-scores [acc {:keys [score id1 id2]}]
+  (-> (assoc acc id1 (+ (get score 0) (get acc id1 0)))
+      (assoc id2 (+ (get score 1) (get acc id2 0)))))
+
+(sort-by key (group-by #(get % 1) (into [] (reduce acc-scores {} (:matches @database)))))
+
+(defn extract-val-from-vector [[score coll]]
+  (letfn [(f [[id  score]] id)]
+    [score (map f coll)]))
+
+(defn extract-rank [rank [score coll]]
+  (letfn [(f [id] [id (inc rank)])]
+    (map f coll)))
+
+(defn rank [matches] (->> (reduce acc-scores {} matches)
+       (into [])
+       (group-by #(get % 1))
+                                        ;(map #(println %))
+       (map extract-val-from-vector)
+       (into {})
+       (sort-by key)
+       reverse
+       (mapcat extract-rank (range))
+       ))
