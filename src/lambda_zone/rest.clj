@@ -142,6 +142,8 @@
 (def src-c (chan buf))
 (def mc (mult src-c))
 
+(def at-least-one (tap mc (chan (sliding-buffer 1))))
+
 (defn to-string [board]
   (into []  (map #(.toString %) board)))
 
@@ -168,16 +170,18 @@
     (println "Opened connection from" async-channel)
     (let [sink (chan (sliding-buffer 1))]
       (tap mc sink)
-      (println "sending init data")
+      (println "registered mc sink" mc sink "sending init data")
       (>!! ws (json/generate-string {:msg {:msg-type :full-results :matches (back/load-results)}}))
       (go-loop []
         (println "about to wait for message" async-channel)
         (let [;;[{:keys [board message move score id1 id2 iteration] :as val} c]  (alts! [ws sink])
-              {:keys [board iteration msg-type] :as val}  (<! sink)
+              {:keys [board iteration msg-type] :as val} (<! sink) ;;(alts! [sink (timeout 10000)])
               ]
+          (println "Message received test:" val )
           (when val
-            ;(println "Message received test+++:" [board iteration] "from"  "on" async-channel)
+            (println "Message received test+++; about to sent to WS" )
             (>! ws (json/generate-string {:msg (route-msg2client val) }))
+            (println "message sent to WS")
             (recur))
           (println "about to untap" async-channel)
           (untap mc sink)
