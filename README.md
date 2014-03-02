@@ -1,6 +1,6 @@
 # Lambda Zone
 
-A Clojure ...
+A Clojure website
 
 ## Usage
 
