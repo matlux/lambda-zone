@@ -42,6 +42,7 @@
 
                  [cheshire "5.3.1"]
                  ]
+  :min-lein-version "2.0.0"
   :plugins [[lein-pdo "0.1.1"]
             [jarohen/lein-frodo "0.2.0"]
             [lein-cljsbuild "0.3.3"]]
