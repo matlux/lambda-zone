@@ -280,9 +280,10 @@
 
 
 (defn save-function [{{id :id fn :fn :as function} :body :as req} c]
-  (let [{login :identity} (friend/current-authentication req)
+  (let [{login :email :as auth} (friend/current-authentication req)
         f-with-identity (assoc function :login login :channel c)
         {:keys [result reason] :as validation-result} (validate-fn fn)]
+    (println "auth:" auth)
     (cond
      (not= result :ok) validation-result
      ;;(nil? login) {:return "function cannot be added anonymously. Please login with the openId above"}
