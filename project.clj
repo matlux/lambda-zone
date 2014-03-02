@@ -5,7 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/math.numeric-tower "0.0.3"]
-                 [clj-chess-engine "0.1.0-SNAPSHOT"]
+                 [clj-chess-engine "0.1.0.1"]
 
                  ;;ring stuff
                  [ring "1.2.0"]
@@ -56,4 +56,6 @@
                         :compiler {:output-to "target/resources/js/chord-example.js"
                                    :optimizations :whitespace
                                    :pretty-print true}}]}
+  :jvm-opts ["-Djava.security.policy=example.policy" "-Xmx80M"]
+  :uberjar-name "lambda-zone-standalone.jar"
   :main lambda-zone.rest)

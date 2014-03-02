@@ -32,6 +32,7 @@
 
             ;;[clojure.data.json :as json]
             [cheshire.core :as json]
+            [org.httpkit.server :as http]
 
             ;;:reload-all
             )
@@ -258,3 +259,17 @@
 
 (def app
   #'app-routes)
+
+
+(defn to-port [s]
+  (when-let [port s] (Long. port)))
+
+(defn start-server [& [port]]
+  (http/run-server #'app
+   {:port (or (to-port port)
+       (to-port (System/getenv "PORT")) ;; For deploying to Heroku
+       3000)
+;;    :session-cookie-attrs {:max-age 600}
+    }))
+
+(defn -main [& args] (start-server (first args)))
