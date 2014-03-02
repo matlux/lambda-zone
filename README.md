@@ -1,6 +1,6 @@
 # Lambda Zone
 
-A Clojure website
+A Clojure website for chess strategy functions
 
 ## Usage
 
