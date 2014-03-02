@@ -297,7 +297,7 @@
             {:return "function added ok"}))))
   )
 (defn retrieve-function [id]
-  (let [{login :identity} (friend/current-authentication friend/*identity*)
+  (let [{login :email} (friend/current-authentication friend/*identity*)
         f-pk {:login login :id id}]
     (cond
      (nil? login) {:return "function cannot be retrieved anonymously. Please login with the openId above"}
