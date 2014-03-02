@@ -248,7 +248,7 @@
         (go
           (let [in-game-msgs (atom [])
                 results-msgs (atom [])
-               ws (<! (ws-ch (str "ws://" js/document.location.hostname ":80/ws")))
+               ws (<! (ws-ch (str "wss://" js/document.location.hostname "/ws")))
                ]
            (bind-msgs ws in-game-msgs results-msgs)
            (d/replace-contents! (sel1 :#content)
