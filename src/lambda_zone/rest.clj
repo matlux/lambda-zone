@@ -193,6 +193,7 @@
   (GET "/" req (home-page req))
   (GET "/function/:id" [id] (response (back/retrieve-function id)))
   (PUT "/function" req (response (back/save-function req src-c)))
+  (GET "/results" req (response (back/load-results)))
   (GET "/ws" [] ws-handler)
   (c-route/resources "/js" {:root "js"})
   (c-route/resources "/")
