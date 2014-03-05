@@ -193,20 +193,14 @@
   (GET "/" req (home-page req))
   (GET "/function/:id" [id] (response (back/retrieve-function id)))
   (PUT "/function" req (response (back/save-function req src-c)))
+  (GET "/result/:id1/:id2" [id1 id2] (response (back/retrieve-result id1 id2)))
   (GET "/results" req (response (back/load-results)))
+  (GET "/html/replaygame" req "test")
   (GET "/ws" [] ws-handler)
   (c-route/resources "/js" {:root "js"})
   (c-route/resources "/")
   )
 
-(macroexpand '(defroutes api
-  (GET "/" req (home-page req))
-  (GET "/function/:id" [id] (response (back/retrieve-function id)))
-  (PUT "/function" req (response (back/save-function req source)))
-  (GET "/ws" [] ws-handler)
-  (c-route/resources "/js" {:root "js"})
-  (c-route/resources "/")
-  ))
 
 (def app-routes
   (->

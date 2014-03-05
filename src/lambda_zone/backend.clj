@@ -238,11 +238,18 @@
 (defn load-results []
   (load-results-from-atom))
 
+(defn retrieve-result-from-atom [id1-match id2-match]
+  (first (filter (fn [{id1 :id1 id2 :id2}] (and (= id1 id1-match) (= id2 id2-match))
+                   ) (:matches @database))))
+
+(defn retrieve-result [id1 id2]
+  (retrieve-result-from-atom id1 id2))
+
 (defn save-result [result]
   (let [{s :score res :result id1 :id1 id2 :id2}  result
         ]
     (swap! database (fn [db]
-                      {:matches (conj (:matches db) (dissoc result :history :board) )
+                      {:matches (conj (:matches db) (dissoc result :board) )
                        :contenders (:contenders db)}))
     (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")))
 
