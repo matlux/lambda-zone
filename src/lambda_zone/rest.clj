@@ -120,6 +120,21 @@
    [:h3 "Logging out"]
    [:p (e/link-to (misc/context-uri req "logout") "Click here to log out") "."])))
 
+(defn replay-page [req]
+  (h/html5
+  misc/pretty-head
+  (misc/pretty-body
+
+
+
+
+
+   [:div#content]
+   [:div#content2]
+
+
+   [:p (e/link-to (misc/context-uri req "/") "homepage") "."])))
+
 
 ;; (defn ws-handler [req]
 ;;   (with-channel req ws
@@ -195,7 +210,7 @@
   (PUT "/function" req (response (back/save-function req src-c)))
   (GET "/result/:id1/:id2" [id1 id2] (response (back/retrieve-result id1 id2)))
   (GET "/results" req (response (back/load-results)))
-  (GET "/html/replaygame" req "test")
+  (GET "/html/replaygame" req (response (replay-page req)))
   (GET "/ws" [] ws-handler)
   (c-route/resources "/js" {:root "js"})
   (c-route/resources "/")

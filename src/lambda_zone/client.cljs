@@ -110,10 +110,6 @@
      (doto (node [:div])
        bind-list!)])))
 
-(defn keywordize-map [my-map]
-  (into {}
-  (for [[k v] my-map]
-    [(keyword k) v])))
 
 (defn deserialize-msg [msg]
   ((js->clj (JSON/parse (:message msg)) :keywordize-keys true) :msg))
@@ -161,7 +157,8 @@
                                         ;[:li "None yet."]
     ))
 
-
+(defn link-to [url body]
+  [:a {:href url} body])
 
 (defn render-results [matches]
   (node
@@ -173,7 +170,9 @@
     [:div [:table {:class "table"}
            [:tr [:td "opponents"] [:td "score"] [:td "reason"]]
            (for [{:keys [id1 id2 score result]} matches]
-             [:tr [:td (str id1 " vs " id2)] [:td (pr-str score)]  [:td result]])]]
+             [:tr [:td (link-to (str "result/" id1 "/" id2) (str id1 " vs " id2))]
+              [:td (link-to (str "result/" id1 "/" id2) (pr-str score))]
+              [:td (link-to (str "result/" id1 "/" id2) result)]])]]
 )))
 
 (defn dispatch2 [msgs]
