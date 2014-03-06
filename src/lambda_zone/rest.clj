@@ -125,10 +125,6 @@
   misc/pretty-head
   (misc/pretty-body
 
-
-
-
-
    [:div#content]
    [:div#content2]
 

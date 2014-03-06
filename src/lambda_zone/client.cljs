@@ -1,8 +1,10 @@
 (ns lambda-zone.client
   (:require [chord.client :refer [ws-ch]]
-            [cljs.core.async :refer [<! >! put! take! close! timeout]]
+            [cljs.core.async :refer [<! >! put! take! chan close! timeout]]
             [dommy.core :as d]
-            [goog.string.format :as gformat])
+            [goog.string.format :as gformat]
+            [clojure.string :as string]
+            [goog.net.XhrIo :as xhr])
   (:require-macros [cljs.core.async.macros :refer [go]]
                    [dommy.macros :refer [node sel1]]))
 
@@ -110,15 +112,16 @@
      (doto (node [:div])
        bind-list!)])))
 
+(defn keywordize-map [my-map]
+  (into {}
+  (for [[k v] my-map]
+    [(keyword k) v])))
 
 (defn deserialize-msg [msg]
   ((js->clj (JSON/parse (:message msg)) :keywordize-keys true) :msg))
 
-(defn render-board-old [board]
-  (let [b (partition 8 board)]
-    (for [col b]
-      [:li (pr-str col) ]
-      )))
+(defn deserialize-json [json]
+  (js->clj (JSON/parse json) :keywordize-keys true))
 
 
 (defn render-in-game-update [{:keys [board id1 id2 iteration time] :as d-msg}]
@@ -160,6 +163,10 @@
 (defn link-to [url body]
   [:a {:href url} body])
 
+(defn to-result-page [id1 id2]
+  ;(str "result/" id1 "/" id2)
+  (str "html/replaygame?id1=" id1 "&id2=" id2))
+
 (defn render-results [matches]
   (node
    (list
@@ -170,9 +177,9 @@
     [:div [:table {:class "table"}
            [:tr [:td "opponents"] [:td "score"] [:td "reason"]]
            (for [{:keys [id1 id2 score result]} matches]
-             [:tr [:td (link-to (str "result/" id1 "/" id2) (str id1 " vs " id2))]
-              [:td (link-to (str "result/" id1 "/" id2) (pr-str score))]
-              [:td (link-to (str "result/" id1 "/" id2) result)]])]]
+             [:tr [:td (link-to (to-result-page id1 id2) (str id1 " vs " id2))]
+              [:td (link-to (to-result-page id1 id2) (pr-str score))]
+              [:td (link-to (to-result-page id1 id2) result)]])]]
 )))
 
 (defn dispatch2 [msgs]
@@ -193,14 +200,6 @@
     ))
 
 ;;(render-board (initial-board))
-
-(defn render-list-old [msgs]
-  (node
-   [:ul
-    (if (seq msgs)
-      (for [msg msgs]
-        [:li (pr-str msg)])
-      [:li "None yet."])]))
 
 (defn list-binder [msgs]
   (fn [$list]
@@ -240,16 +239,28 @@
            "in-game-update" (swap! in-game-msgs conj msg)
            (.log js/console  (str "no dispatch for message:" (pr-str d-msg ))))
          (recur))
-  ))))
+       ))))
 
-(set! (.-onload js/window)
-      (fn []
+(defn get-uri []
+  (second (string/split js/window.location.href js/window.location.host)))
+(defn get-base-uri []
+  (first (string/split (get-uri) "?")))
+
+(defn get-params []
+  (let [sparams (second (string/split (get-uri) "?"))]
+    (pr-str (keywordize-map (into {}  (map #(string/split % "=") (string/split sparams "&")))) )))
+
+
+(def home-page (fn []
         (go
           (let [in-game-msgs (atom [])
                 results-msgs (atom [])
-               ws (<! (ws-ch (str "ws://" js/document.location.hostname ":3000/ws")))
-               ]
-           (bind-msgs ws in-game-msgs results-msgs)
+               ws (<! (ws-ch (str "ws://" js/window.location.host "/ws")))
+                ]
+            (.log js/console js/window.location.host)
+
+            (bind-msgs ws in-game-msgs results-msgs)
+
            (d/replace-contents! (sel1 :#content)
                                 (render-page (input-binder ws)
                                              (list-binder in-game-msgs)))
@@ -260,3 +271,44 @@
 
            (reset! in-game-msgs [])
            (reset! results-msgs [])))))
+
+
+
+(defn GET [url]
+  (let [ch (chan 1)]
+    (xhr/send url
+              (fn [event]
+                (let [res (-> event .-target .getResponseText deserialize-json)]
+                  (go (>! ch res)
+                      (close! ch)))))
+    ch))
+
+
+(def replay-page (fn []
+        (go
+          (let [in-game-msgs (atom [])
+                results-msgs (atom [])
+                ws (<! (ws-ch (str "ws://" js/window.location.host "/ws")))
+
+                ]
+            (.log js/console (get-params))
+            (.log js/console (pr-str (deserialize-json "{\"a\": \"2\"}")))
+
+            (bind-msgs ws in-game-msgs results-msgs)
+
+           (d/replace-contents! (sel1 :#content)
+                                (render-page (input-binder ws)
+                                             (list-binder in-game-msgs)))
+           (d/replace-contents! (sel1 :#content2)   (pr-str (<! (GET "/result/daredevil/d"))))
+
+           ;;(dispatch ws msgs)
+
+           (reset! in-game-msgs [])
+           (reset! results-msgs [])))))
+
+(set! (.-onload js/window)
+
+      (case (get-base-uri)
+        "/" home-page
+        "/html/replaygame" replay-page)
+)
