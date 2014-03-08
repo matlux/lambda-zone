@@ -4,7 +4,8 @@
             [dommy.core :as d]
             [goog.string.format :as gformat]
             [clojure.string :as string]
-            [goog.net.XhrIo :as xhr])
+            [goog.net.XhrIo :as xhr]
+            )
   (:require-macros [cljs.core.async.macros :refer [go]]
                    [dommy.macros :refer [node sel1]]))
 
@@ -228,6 +229,13 @@
                    (d/set-value! $input ""))))
     (go (<! (timeout 200)) (.focus $input))))
 
+(defn button-input-binder [ch]
+  (fn [$input]
+    (d/listen! $input :click (fn [e] (.log js/console (str "test input binder="  (d/text $input)))
+                               (put! ch (d/text $input))))
+    (go (<! (timeout 200)) (.focus $input))))
+
+
 (defn bind-msgs [ch  in-game-msgs results-msgs]
   (go
    (loop []
@@ -283,28 +291,49 @@
                       (close! ch)))))
     ch))
 
+(defn game-binder [c]
+  (fn [$element]
+    (go (loop [{state :board} {:board (initial-board) }]
+          (let [msg (<! c)]
+            (when msg
+              (.log js/console (pr-str msg))
+              (d/replace-contents! $element (render-board state) )
+              (recur state)))))))
+
+(defn render-replay-page [bind-input! bind-game!]
+  (node
+   (list
+    [:div
+
+     [:h3 "Game:"]
+     (doto (node [:div])
+       bind-game!)
+    [:div
+     ;;[:h3 "Send a message to the server:"]
+     (doto (node [:button {:type :submit :class "btn btn-success"} "prev"])
+       bind-input!)
+     (doto (node [:button {:type :submit :class "btn btn-success"} "next"])
+       bind-input!)]
+
+     ])))
+
+;;[:button {:type "submit" :onclick "loadFunction();" :class "btn btn-success"} "Load"]
 
 (def replay-page (fn []
         (go
-          (let [in-game-msgs (atom [])
-                results-msgs (atom [])
+          (let [
                 ws (<! (ws-ch (str "ws://" js/window.location.host "/ws")))
-
+                ch (chan)
                 ]
             (.log js/console (get-params))
-            (.log js/console (pr-str (deserialize-json "{\"a\": \"2\"}")))
 
-            (bind-msgs ws in-game-msgs results-msgs)
+            ;(bind-msgs ws in-game-msgs results-msgs)
 
            (d/replace-contents! (sel1 :#content)
-                                (render-page (input-binder ws)
-                                             (list-binder in-game-msgs)))
-           (d/replace-contents! (sel1 :#content2)   (pr-str (<! (GET "/result/daredevil/d"))))
-
-           ;;(dispatch ws msgs)
-
-           (reset! in-game-msgs [])
-           (reset! results-msgs [])))))
+                                (render-replay-page (button-input-binder ch)
+                                             (game-binder ch)))
+           ;;(d/replace-contents! (sel1 :#content2)   (pr-str (<! (GET "/result/daredevil/d"))))
+))))
 
 (set! (.-onload js/window)
 

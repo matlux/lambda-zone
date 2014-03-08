@@ -205,6 +205,7 @@
   (GET "/function/:id" [id] (response (back/retrieve-function id)))
   (PUT "/function" req (response (back/save-function req src-c)))
   (GET "/result/:id1/:id2" [id1 id2] (response (back/retrieve-result id1 id2)))
+  (GET "/board/:id1/:id2/:move" [id1 id2 move] (response (back/retrieve-board id1 id2 move)))
   (GET "/results" req (response (back/load-results)))
   (GET "/html/replaygame" req (response (replay-page req)))
   (GET "/ws" [] ws-handler)

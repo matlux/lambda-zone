@@ -245,6 +245,9 @@
 (defn retrieve-result [id1 id2]
   (retrieve-result-from-atom id1 id2))
 
+(defn retrieve-board [id1 id2 move]
+  (retrieve-result-from-atom id1 id2))
+
 (defn save-result [result]
   (let [{s :score res :result id1 :id1 id2 :id2}  result
         ]
