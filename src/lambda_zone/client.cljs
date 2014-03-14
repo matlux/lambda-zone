@@ -293,12 +293,18 @@
 
 (defn game-binder [c]
   (fn [$element]
-    (go (loop [{state :board} {:board (initial-board) }]
-          (let [msg (<! c)]
-            (when msg
-              (.log js/console (pr-str msg))
-              (d/replace-contents! $element (render-board state) )
-              (recur state)))))))
+    (let [counter (atom 0)]
+     (go (loop [{board :board} {:board (initial-board) }]
+           (let [button (<! c)]
+             (when button
+               (let [_ (if (= button "next")
+                        (swap! counter inc)
+                        (swap! counter dec))
+                     new-board (<! (GET (str "/board/daredevil/d/" @counter)))]
+                 (.log js/console (pr-str button))
+                 (.log js/console new-board)
+                 (d/replace-contents! $element (render-board new-board) )
+                 (recur {:board new-board})))))))))
 
 (defn render-replay-page [bind-input! bind-game!]
   (node

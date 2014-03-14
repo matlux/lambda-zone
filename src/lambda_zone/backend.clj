@@ -229,6 +229,8 @@
      (binding [*out* s#]
        (assoc (time (binding [*out* oldout#] ~@body)) :time (str s#)))))
 
+(defn parse-int [s]
+   (Integer. (re-find  #"\d+" s )))
 
 ;;(with-time-assoced (println "hello"))
 
@@ -246,7 +248,15 @@
   (retrieve-result-from-atom id1 id2))
 
 (defn retrieve-board [id1 id2 move]
-  (retrieve-result-from-atom id1 id2))
+  (let [{moves :history} (retrieve-result id1 id2)]
+    ;;(chess/board-seq moves)
+    (nth (chess/board-seq moves) (parse-int move))
+    ))
+
+;;(retrieve-board "daredevil" "d" "0")
+;;(retrieve-result "daredevil" "d")
+;;(chess/board-seq [["e2" "e4"] ["e7" "e5"] ["d1" "h5"] ["d7" "d6"] ["f1" "c4"] ["b8" "c6"] ["h5" "f7"] ["e8" "e7"]] )
+
 
 (defn save-result [result]
   (let [{s :score res :result id1 :id1 id2 :id2}  result
