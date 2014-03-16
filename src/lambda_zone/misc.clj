@@ -3,6 +3,10 @@
             [hiccup.page :refer [include-js]])
   (:import java.net.URI))
 
+;; clojurescript tool
+(defmacro dbg[x] `(let [x# ~x] (.log js/console "dbg:" (pr-str '~x) "=" (pr-str x#)) x#))
+
+
 (def github-base-url
   "https://github.com/cemerick/friend-demo/blob/master/src/clj/")
 

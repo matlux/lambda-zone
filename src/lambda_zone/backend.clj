@@ -249,7 +249,7 @@
 
 (defn retrieve-board [id1 id2 move]
   (let [{moves :history} (retrieve-result id1 id2)]
-    ;;(chess/board-seq moves)
+    (println "number of moves" (count moves))
     (nth (chess/board-seq moves) (parse-int move))
     ))
 

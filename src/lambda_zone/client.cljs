@@ -7,9 +7,10 @@
             [goog.net.XhrIo :as xhr]
             )
   (:require-macros [cljs.core.async.macros :refer [go]]
-                   [dommy.macros :refer [node sel1]]))
+                   [dommy.macros :refer [node sel1]]
+                   [lambda-zone.misc :refer [dbg]]))
 
-
+;;(defmacro dbg[x] `(let [x# ~x] (.log js/console "dbg:" '~x "=" x#) x#))
 
 (defn acc-scores [acc {:keys [score id1 id2]}]
   (-> (assoc acc id1 (+ (get score 0) (get acc id1 0)))
@@ -256,7 +257,7 @@
 
 (defn get-params []
   (let [sparams (second (string/split (get-uri) "?"))]
-    (pr-str (keywordize-map (into {}  (map #(string/split % "=") (string/split sparams "&")))) )))
+    (keywordize-map (into {}  (map #(string/split % "=") (string/split sparams "&")))) ))
 
 
 (def home-page (fn []
@@ -291,19 +292,58 @@
                       (close! ch)))))
     ch))
 
-(defn game-binder [c]
+(defn render-replay-game [{:keys [board id1 id2 iteration time] :as d-msg}]
+  (node
+   [:ul
+
+    (let []
+      ;;(.log js/console (pr-str iteration))
+      (list (render-board board)
+            [:div (str iteration " / \"" id1 "\" vs \"" id2 "\"")]
+            [:div (str time)]
+            ;;[:div (str d-msg)]
+            )
+      )
+
+                                        ;[:li "None yet."]
+    ]))
+
+
+
+(defn update-counter
+  ([counter direction]
+     (if direction
+       (swap! counter inc)
+       (swap! counter dec)))
+  ([counter button move-count]
+     (let [c @counter
+           direction (= button "next")
+           within-boundary (if direction
+                             (< c move-count)
+                             (< 0 c))
+           ]
+       ;;(.log js/console (str c ", move-count=" move-count ", direction=" direction))
+       (if within-boundary
+         (update-counter counter direction)
+         c))))
+
+(defn game-binder [c {:keys [id1 id2 move-count] :as params}]
   (fn [$element]
     (let [counter (atom 0)]
      (go (loop [{board :board} {:board (initial-board) }]
            (let [button (<! c)]
              (when button
-               (let [_ (if (= button "next")
-                        (swap! counter inc)
-                        (swap! counter dec))
-                     new-board (<! (GET (str "/board/daredevil/d/" @counter)))]
+               (.log js/console (pr-str params))
+               (let [
+                     counter-val (update-counter counter button move-count)
+                     new-board (<! (GET (str "/board/" id1 "/" id2 "/" counter-val)))]
                  (.log js/console (pr-str button))
-                 (.log js/console new-board)
-                 (d/replace-contents! $element (render-board new-board) )
+
+                 (d/replace-contents! $element
+                                      (render-replay-game
+                                       (merge params
+                                        {:board new-board
+                                         :iteration counter-val})) )
                  (recur {:board new-board})))))))))
 
 (defn render-replay-page [bind-input! bind-game!]
@@ -328,18 +368,27 @@
 (def replay-page (fn []
         (go
           (let [
-                ws (<! (ws-ch (str "ws://" js/window.location.host "/ws")))
+                ;;ws (<! (ws-ch (str "ws://" js/window.location.host "/ws")))
+                {:keys [id1 id2] :as params} (get-params)
+                {:keys [history]} (<! (GET (str "/result/" id1 "/" id2)))
+                valid-move-nb (count (filter vector? history))
                 ch (chan)
                 ]
-            (.log js/console (get-params))
+            (.log js/console (str id1 id2 valid-move-nb))
 
             ;(bind-msgs ws in-game-msgs results-msgs)
 
            (d/replace-contents! (sel1 :#content)
                                 (render-replay-page (button-input-binder ch)
-                                             (game-binder ch)))
-           ;;(d/replace-contents! (sel1 :#content2)   (pr-str (<! (GET "/result/daredevil/d"))))
-))))
+                                                    (game-binder ch (merge params {:move-count valid-move-nb})
+                                                          )))
+           (d/replace-contents! (sel1 :#content2)
+                                (pr-str history))
+
+           ;; (d/replace-contents! (render-replay-game {:board (initial-board)
+           ;;                                           :iteration 0}))
+           (>! ch {:board (initial-board) :iteration 0} )
+           ))))
 
 (set! (.-onload js/window)
 
