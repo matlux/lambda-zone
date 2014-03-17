@@ -394,5 +394,7 @@
 
       (case (get-base-uri)
         "/" home-page
-        "/html/replaygame" replay-page)
+        "/html/replaygame" replay-page
+        home-page
+        )
 )
