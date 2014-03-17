@@ -337,13 +337,14 @@
                (let [
                      counter-val (update-counter counter button move-count)
                      new-board (<! (GET (str "/board/" id1 "/" id2 "/" counter-val)))]
-                 (.log js/console (pr-str button))
+                 (.log js/console (str "rest call back" (pr-str button)))
 
                  (d/replace-contents! $element
                                       (render-replay-game
                                        (merge params
                                         {:board new-board
                                          :iteration counter-val})) )
+                 (.log js/console (str "UI drawn"))
                  (recur {:board new-board})))))))))
 
 (defn render-replay-page [bind-input! bind-game!]

@@ -250,7 +250,7 @@
 (defn retrieve-board [id1 id2 move]
   (let [{moves :history} (retrieve-result id1 id2)]
     (println "number of moves" (count moves))
-    (nth (chess/board-seq moves) (parse-int move))
+    (time (nth (chess/board-seq moves) (parse-int move)))
     ))
 
 ;;(retrieve-board "daredevil" "d" "0")
