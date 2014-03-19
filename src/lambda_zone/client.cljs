@@ -70,12 +70,15 @@
    "r" "BR"
    })
 
-(defn render-piece [piece background]
-  (let [img (piece2img piece)
+(defn render-piece-intern [piece background]
+  (let [;;_ (.log js/console (str "drawning piece " piece))
+        img (piece2img piece)
         b (if background "white" "gray")]
     (if (nil? img)
       [:img { :width "32" :height "32" :style (str "background-color:" b ";")}]
       [:img {:src (str "/images/" img ".png") :alt "white bishop" :width "32" :height "32" :style (str "background-color:" b ";")}])))
+
+(def render-piece (memoize render-piece-intern))
 
 (defn render-separator [background]
   (let [b (if background "white" "gray")
@@ -85,12 +88,14 @@
 (defn render-board [board-state]
   (node
    [:div
-    (let [line "+------+------+------+------+------+------+------+------+"
+    (let [;;line "+------+------+------+------+------+------+------+------+"
+          _ (.log js/console (str "drawning board "))
           pieces-pos (char2state board-state)         ;(into {} board-state)
           ]
       (list
        ;[:div line]
-       [:div (map #(let [pos (c1dto2d (dec %))
+       [:div (map #(let [;;_ (.log js/console (str "drawing piece1 " %))
+                         pos (c1dto2d (dec %))
                          [x y] pos
                          c (get pieces-pos pos "-")
                          b (even? (+ x y))]
@@ -99,7 +104,9 @@
                          (list (render-piece c b) (render-separator b) )
                          ;;(gformat "| %s |\n%s\n" c line)
                          ;;(gformat "| %s " c)
-                         )) (range 1 65))]))]))
+                         )) (range 1 65))]
+       ;;[:div (.log js/console (str "drawn board "))]
+       ))]))
 
 (defn render-page [bind-input! bind-list!]
   (node
@@ -297,7 +304,7 @@
    [:ul
 
     (let []
-      ;;(.log js/console (pr-str iteration))
+      (.log js/console (pr-str iteration))
       (list (render-board board)
             [:div (str iteration " / \"" id1 "\" vs \"" id2 "\"")]
             [:div (str time)]

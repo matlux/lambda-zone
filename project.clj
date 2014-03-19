@@ -5,7 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/math.numeric-tower "0.0.3"]
-                 [clj-chess-engine "0.1.0.3"]
+                 [clj-chess-engine "0.1.0.4"]
 
                  ;;ring stuff
                  [ring "1.2.0"]
