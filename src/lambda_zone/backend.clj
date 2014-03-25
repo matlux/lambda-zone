@@ -9,7 +9,15 @@
             )
   (:import clojure.lang.PersistentVector))
 
-
+(defmacro with-time-assoced
+  "Evaluates exprs in a context in which *out* is bound to a fresh
+  StringWriter.  Returns the assoced map with :time -> created by any nested printing
+  calls."
+  [& body]
+  `(let [s# (new java.io.StringWriter)
+         oldout# *out*]
+     (binding [*out* s#]
+       (assoc (time (binding [*out* oldout#] ~@body)) :time (str s#)))))
 
 
 ;; ----------------------- stats
@@ -49,17 +57,84 @@
                         (let [move (rand-int (count valid-moves))]
                           {:move (get v move), :state iteration}))))
 
+(defn remove-f-id-in-atom [{id :id login :login :as function} contenders]
+  (remove (fn [{iddb :id logindb :login}]  (and (= iddb id) (= logindb login))) contenders))
 
-(def database (atom (read-string (slurp "./db.clj"))))
+(declare schedule-recomputation)
 
-(def database-test (atom {:matches [{:id1 "superman" :id2 "daredevil" :score [1 0]}]
-                          :contenders [{:login "Philip" :id "daredevil" :fn random-f-src}
-                                       {:login "Nicholas" :id "superman" :fn random-f-src}
-                                       {:login "Steve" :id "Wonderboy" :fn random-f-src }
-                                        ] }))
+(defprotocol DataAccessLayer
+  (getSnapshot [this])
+  (saveResult [this result])
+  (saveFunction [this f])
+  (deleteResultByFunction [this f])
+
+  )
+
+(defprotocol DataAccessLayerSnapshot
+  (getAllFunctions [this])
+  (getAllMatches [this])
+  (getFunctionById [this id])
+  ;; (getFunctionByLoginId [this id])
+  )
+
+(defrecord FileBaseDaoSnapshot [db]
+  DataAccessLayerSnapshot
+  (getAllFunctions [this]
+    (:contenders db))
+  (getAllMatches [this]
+    (:matches db))
+  (getFunctionById [this id]
+    (for [{ i :id :as function} (:contenders db)
+        :when (= i id)
+        ]
+    function
+    ))
+  ;; (getFunctionByLoginId [this {id :id login :login :as function}]
+  ;;   (first (filter (fn [{iddb :id logindb :login}]  (and (= iddb id) (= logindb login))) (getAllFunctions dbsnapshot))))
+  )
+
+(defrecord FileBaseDAO [^clojure.lang.Atom database]
+  DataAccessLayer
+  (getSnapshot [this]
+    (FileBaseDaoSnapshot. @database))
+  (saveResult [this result]
+    (let [{s :score res :result id1 :id1 id2 :id2}  result
+        ]
+    (swap! database (fn [db]
+                      {:matches (conj (:matches db) (dissoc result :board) )
+                       :contenders (:contenders db)}))
+    (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")))
+  (saveFunction [this f]
+    (let [{id :id login :login c :channel :as function} f
+          cleaned-f (dissoc function :channel)]
+      (swap! database (fn [db]
+                        {:matches (remove (fn [{:keys [id1 id2]}] (or (= id1 id) (= id2 id))) (:matches db))
+                         :contenders (conj (remove-f-id-in-atom function (:contenders db)) cleaned-f)}))
+      (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
+      (schedule-recomputation c)))
+  (deleteResultByFunction [this f]
+    (let [{id :id login :login :as function} f]
+      (swap! database (fn [db]
+                       {:matches (filter (fn [{:keys [id1 id2]}] (not (or (= id1 "a") (= id2 "a")))) (:matches db))
+                        :contenders (:contenders db)}))
+     (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")))
+  )
+
+
+
+
+
+(def dao (FileBaseDAO. (atom (read-string (slurp "./db.clj")))))
+
+(def dao-test (FileBaseDAO. (atom {:matches [{:id1 "superman" :id2 "daredevil" :score [1 0]}]
+                      :contenders [{:login "Philip" :id "daredevil" :fn random-f-src}
+                                   {:login "Nicholas" :id "superman" :fn random-f-src}
+                                   {:login "Steve" :id "Wonderboy" :fn random-f-src }
+                                   ] })))
+
 
 (defn all-available-functions [db]
-  (:contenders db))
+  (getAllFunctions db))
 
 (defn all-available-function-matches [db]
   (let [all-fns (all-available-functions db)]
@@ -70,7 +145,7 @@
                      )] [fn1 fn2])))
 
 (defn all-matches [db]
-  (:matches db))
+  (getAllMatches db))
 
 (defn fn-pairs-already-comp [db]
   (let [played-matches (all-matches db)]
@@ -82,14 +157,6 @@
                  ;;(> 0 (compare (.toString fn1) (.toString fn2)))
                  )]
       [f1 f2])))
-;; (defn remaining-fn2comp [db]
-;;   (let [possible-matches (all-available-function-matches db)
-;;         played-matches (all-matches db)]
-;;     (filter
-;;      (fn [[{id1 :id :as f1} {id2 :id :as f2}]]
-;;        (some
-;;         (fn [{id1m :id1 id2m :id2 :as match}] (= [id1 id2] [id1m id2m])) played-matches))
-;;      possible-matches)))
 
 (defn remaining-fn-pairs2comp [db]
   (let [possible-matches (into #{} (all-available-function-matches db))
@@ -98,27 +165,23 @@
 
 
 ;;(filter (fn [{id1m :id1 id2m :id2 :as match}] ) played-matches)
-(count (all-matches @database))
+;;(count (all-matches @database))
 
-(count (all-available-function-matches
-        @database))
-(count (remaining-fn-pairs2comp @database))
+;; (count (all-available-function-matches
+;;         @database))
+;; (count (remaining-fn-pairs2comp @database))
 
 (defn select2functions [db]
   (first (remaining-fn-pairs2comp db)))
 
 (defn select-contender-by-id [db id]
-  (for [{ i :id :as function} (:contenders db)
-        :when (= i id)
-        ]
-    function
-    ))
+  (getFunctionById db id))
 
-(select-contender-by-id @database "daredevil")
+(select-contender-by-id (getSnapshot dao) "daredevil")
 
-(count (select2functions @database))
+(count (select2functions (getSnapshot dao)))
 
-(@database :contenders)
+;;(@database :contenders)
 
 
 
@@ -219,33 +282,18 @@
 ;;(read-string "#(+ 1 1)")
 ;;(read-string random-f-src)
 
-(defmacro with-time-assoced
-  "Evaluates exprs in a context in which *out* is bound to a fresh
-  StringWriter.  Returns the assoced map with :time -> created by any nested printing
-  calls."
-  [& body]
-  `(let [s# (new java.io.StringWriter)
-         oldout# *out*]
-     (binding [*out* s#]
-       (assoc (time (binding [*out* oldout#] ~@body)) :time (str s#)))))
 
 (defn parse-int [s]
    (Integer. (re-find  #"\d+" s )))
 
 ;;(with-time-assoced (println "hello"))
 
-(defn load-results-from-atom []
-  (:matches @database))
-
 (defn load-results []
-  (load-results-from-atom))
+  (getAllMatches (getSnapshot dao)))
 
-(defn retrieve-result-from-atom [id1-match id2-match]
+(defn retrieve-result [id1-match id2-match]
   (first (filter (fn [{id1 :id1 id2 :id2}] (and (= id1 id1-match) (= id2 id2-match))
-                   ) (:matches @database))))
-
-(defn retrieve-result [id1 id2]
-  (retrieve-result-from-atom id1 id2))
+                   ) (load-results))))
 
 (defn retrieve-board [id1 id2 move]
   (let [{moves :history} (retrieve-result id1 id2)]
@@ -259,42 +307,21 @@
 
 
 (defn save-result [result]
-  (let [{s :score res :result id1 :id1 id2 :id2}  result
-        ]
-    (swap! database (fn [db]
-                      {:matches (conj (:matches db) (dissoc result :board) )
-                       :contenders (:contenders db)}))
-    (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")))
-
-(defn remove-f-id-in-atom [{id :id login :login :as function} contenders]
-  (remove (fn [{iddb :id logindb :login}]  (and (= iddb id) (= logindb login))) contenders))
-
-(declare schedule-recomputation)
+  (saveResult dao result))
 
 
-(defn save-function-in-atom [{id :id login :login c :channel :as function}]
-  (let [cleaned-f (dissoc function :channel)]
-    (swap! database (fn [db]
-                     {:matches (remove (fn [{:keys [id1 id2]}] (or (= id1 id) (= id2 id))) (:matches db))
-                      :contenders (conj (remove-f-id-in-atom function (:contenders db)) cleaned-f)}))
-    (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")
-    (schedule-recomputation c))
+
+(defn retrieve-function-by-login-id [dbsnapshot {id :id login :login :as function}]
+  (first (filter (fn [{iddb :id logindb :login}]  (and (= iddb id) (= logindb login))) (getAllFunctions dbsnapshot)))
   )
 
-(defn retrieve-function-in-atom [{id :id login :login :as function}]
-  (first (filter (fn [{iddb :id logindb :login}]  (and (= iddb id) (= logindb login))) (:contenders @database)))
-  )
-
-(defn duplicate-function-in-atom? [{id :id login :login :as function}]
-  (some (fn [{iddb :id logindb :login}] (and (= iddb id) (not= logindb login))) (:contenders @database)))
+(defn duplicate-function? [dbsnapshot {id :id login :login :as function}]
+  (some (fn [{iddb :id logindb :login}] (and (= iddb id) (not= logindb login))) (getAllFunctions dbsnapshot)))
 
 ;;(defn delete (filter (fn [{:keys [id1 id2]}] (not (or (= id1 "a") (= id2 "a")))) (:matches @database)))
 
-(defn delete-result-in-atom [{id :id login :login :as function}]
-  (swap! database (fn [db]
-                    {:matches (filter (fn [{:keys [id1 id2]}] (not (or (= id1 "a") (= id2 "a")))) (:matches db))
-                     :contenders (:contenders db)}))
-  (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj"))
+(defn delete-result [function]
+  (deleteResultByFunction dao function))
 
 ;;(delete-result-in-atom [{:id "a"}])
 
@@ -307,23 +334,24 @@
     (cond
      (not= result :ok) validation-result
      ;;(nil? login) {:return "function cannot be added anonymously. Please login with the openId above"}
-     (duplicate-function-in-atom? f-with-identity)
+     (duplicate-function? (getSnapshot dao) f-with-identity)
      {:return (str "function name " id " is already owned by a different user")}
      :else (do
 
-             (save-function-in-atom f-with-identity)
+             (saveFunction dao f-with-identity)
           (if (nil? login)
             {:return "function added anonymously"}
             {:return "function added ok"}))))
   )
 (defn retrieve-function [id]
   (let [{login :email} (friend/current-authentication friend/*identity*)
+        dbsnapshot (getSnapshot dao)
         f-pk {:login login :id id}]
     (cond
      (nil? login) {:return "function cannot be retrieved anonymously. Please login with the openId above"}
-     (duplicate-function-in-atom? f-pk)
+     (duplicate-function? dbsnapshot f-pk)
      {:return (str "function name " id " is already owned by a different user")}
-     :else (let [r-f (retrieve-function-in-atom f-pk)]
+     :else (let [r-f (retrieve-function-by-login-id dbsnapshot f-pk)]
              (if (nil? r-f)
                {:result "function not found" :not-found true}
                r-f))
@@ -332,7 +360,8 @@
 
 
 (defn tournament [c]
-  (let [match (select2functions @database)]
+  (let [dbsnapshot (getSnapshot dao)
+        match (select2functions dbsnapshot)]
    (when match
      (let [[{name1 :login fn-src1 :fn id1 :id} {name2 :name fn-src2 :fn id2 :id}] match
            _  (println "found to new match to play: " id1 "against" id2)
@@ -379,7 +408,7 @@
   (-> (assoc acc id1 (+ (get score 0) (get acc id1 0)))
       (assoc id2 (+ (get score 1) (get acc id2 0)))))
 
-(sort-by key (group-by #(get % 1) (into [] (reduce acc-scores {} (:matches @database)))))
+;;(sort-by key (group-by #(get % 1) (into [] (reduce acc-scores {} (:matches (getSnapshot dao))))))
 
 (defn extract-val-from-vector [[score coll]]
   (letfn [(f [[id  score]] id)]
@@ -399,3 +428,8 @@
        reverse
        (mapcat extract-rank (range))
        ))
+
+(comment; )
+
+  ;;(
+ )
