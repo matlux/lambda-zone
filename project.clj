@@ -27,10 +27,11 @@
                  [bultitude "0.1.7"]
 
                  [hiccup "1.0.4"]
-                 [jarohen/chord "0.2.1"]
+                 [jarohen/chord "0.3.1"]
+                 [jarohen/clidget "0.2.0"]
 
-                 [org.clojure/clojurescript "0.0-1913"]
-                 [org.clojure/tools.reader "0.7.8"]
+                 [org.clojure/clojurescript "0.0-2173"]
+                 [org.clojure/tools.reader "0.8.3"]
 
                  [prismatic/dommy "0.1.2"]
 
@@ -44,8 +45,8 @@
                  ]
   :min-lein-version "2.0.0"
   :plugins [[lein-pdo "0.1.1"]
-            [jarohen/lein-frodo "0.2.0"]
-            [lein-cljsbuild "0.3.3"]]
+            [jarohen/lein-frodo "0.2.11"]
+            [lein-cljsbuild "1.0.2"]]
 
   :frodo/config-resource "chord-example.edn"
 

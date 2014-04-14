@@ -5,12 +5,17 @@
             [goog.string.format :as gformat]
             [clojure.string :as string]
             [goog.net.XhrIo :as xhr]
+            ;;[clidget.widget :refer [defwidget] :include-macros true]
             )
-  (:require-macros [cljs.core.async.macros :refer [go]]
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]]
                    [dommy.macros :refer [node sel1]]
-                   [lambda-zone.misc :refer [dbg]]))
+                   [lambda-zone.misc :refer [dbg]]
+                   [clidget.widget :refer [defwidget]]))
 
-;;(defmacro dbg[x] `(let [x# ~x] (.log js/console "dbg:" '~x "=" x#) x#))
+;;(enable-console-print!)
+
+;;(defmacro dbg[x] `(let [x# ~x] (.log js/console "dbg:" '~x "=" x#) x#)) (comment
+
 
 (defn acc-scores [acc {:keys [score id1 id2]}]
   (-> (assoc acc id1 (+ (get score 0) (get acc id1 0)))
@@ -228,6 +233,7 @@
                       (dispatch2)
                       (d/replace-contents! $list))))))
 
+
 (defn input-binder [ch]
   (fn [$input]
     (d/listen! $input :keyup
@@ -239,8 +245,7 @@
 
 (defn button-input-binder [ch]
   (fn [$input]
-    (d/listen! $input :click (fn [e] (.log js/console (str "test input binder="  (d/text $input)))
-                               (put! ch (d/text $input))))
+
     (go (<! (timeout 200)) (.focus $input))))
 
 
@@ -327,76 +332,87 @@
            direction (= button "next")
            within-boundary (if direction
                              (< c move-count)
-                             (< 0 c))
-           ]
+                             (< 0 c))]
        ;;(.log js/console (str c ", move-count=" move-count ", direction=" direction))
        (if within-boundary
          (update-counter counter direction)
          c))))
 
-(defn game-binder [c {:keys [id1 id2 move-count] :as params}]
+(defn game-binder [c ]
   (fn [$element]
     (let [counter (atom 0)]
-     (go (loop [{board :board} {:board (initial-board) }]
-           (let [button (<! c)]
-             (when button
-               (.log js/console (pr-str params))
-               (let [
-                     counter-val (update-counter counter button move-count)
-                     new-board (<! (GET (str "/board/" id1 "/" id2 "/" counter-val)))]
-                 (.log js/console (str "rest call back" (pr-str button)))
+      )))
 
-                 (d/replace-contents! $element
-                                      (render-replay-game
-                                       (merge params
-                                        {:board new-board
-                                         :iteration counter-val})) )
-                 (.log js/console (str "UI drawn"))
-                 (recur {:board new-board})))))))))
+(defwidget game-board [{:keys [game-state]} {:keys [id1 id2 move-count] :as params}]
+  (let [{:keys [board counter]} game-state]
+    (render-replay-game (merge params
+                               {:board board
+                                :iteration counter}))))
 
-(defn render-replay-page [bind-input! bind-game!]
+(defn listen-for-button-click! [button ch]
+  (d/listen! button :click
+             (fn [e]
+               (.log js/console (str "test input binder="  (d/text button)))
+               (put! ch (d/text button)))))
+
+(defn render-replay-page [!game-state button-ch params]
   (node
    (list
     [:div
 
      [:h3 "Game:"]
-     (doto (node [:div])
-       bind-game!)
+     [:div
+      (game-board {:!game-state !game-state} params)]
     [:div
      ;;[:h3 "Send a message to the server:"]
      (doto (node [:button {:type :submit :class "btn btn-success"} "prev"])
-       bind-input!)
+       (listen-for-button-click! button-ch))
      (doto (node [:button {:type :submit :class "btn btn-success"} "next"])
-       bind-input!)]
+       (listen-for-button-click! button-ch))]])))
 
-     ])))
+(comment
+  (a/to-chan ["prev" "next"])
+  (a/reduce #(prn %2) nil ch))
 
 ;;[:button {:type "submit" :onclick "loadFunction();" :class "btn btn-success"} "Load"]
 
-(def replay-page (fn []
-        (go
-          (let [
-                ;;ws (<! (ws-ch (str "ws://" js/window.location.host "/ws")))
-                {:keys [id1 id2] :as params} (get-params)
-                {:keys [history]} (<! (GET (str "/result/" id1 "/" id2)))
-                valid-move-nb (count (filter vector? history))
-                ch (chan)
-                ]
-            (.log js/console (str id1 id2 valid-move-nb))
+(defn watch-button-ch! [button-ch !game-state {:keys [id1 id2] :as params}]
+  (go-loop []
+    (when-let [button-event (<! button-ch)]
+      (let [{:keys [counter]} @!game-state
+            new-counter (update-counter counter button-event)
+            new-board (<! (GET (str "/board/" id1 "/" id2 "/" new-counter)))]
 
-            ;(bind-msgs ws in-game-msgs results-msgs)
+        (reset! !game-state {:board new-board
+                             :counter new-counter})
 
-           (d/replace-contents! (sel1 :#content)
-                                (render-replay-page (button-input-binder ch)
-                                                    (game-binder ch (merge params {:move-count valid-move-nb})
-                                                          )))
-           (d/replace-contents! (sel1 :#content2)
-                                (pr-str history))
+        ))))
 
-           ;; (d/replace-contents! (render-replay-game {:board (initial-board)
-           ;;                                           :iteration 0}))
-           (>! ch {:board (initial-board) :iteration 0} )
-           ))))
+(def replay-page
+  (fn []  (go
+     (let [
+           ;;ws (<! (ws-ch (str "ws://" js/window.location.host "/ws")))
+           {:keys [id1 id2] :as params} (get-params)
+           {:keys [history]} (<! (GET (str "/result/" id1 "/" id2)))
+           valid-move-nb (count (filter vector? history))
+
+           !game-state (atom {:counter 0 :board (initial-board)})
+           button-ch (doto (chan)
+                       (watch-button-ch! !game-state params))]
+       (js/console.log (str id1 id2 valid-move-nb))
+
+                                        ;(bind-msgs ws in-game-msgs results-msgs)
+
+       (d/replace-contents! (sel1 :#content)
+                            (render-replay-page !game-state button-ch params))
+
+       (d/replace-contents! (sel1 :#content2)
+                            (pr-str history))
+
+       ;; (d/replace-contents! (render-replay-game {:board (initial-board)
+       ;;                                           :iteration 0}))
+       ;;(>! ch {:board (initial-board) :iteration 0})
+       ))))
 
 (set! (.-onload js/window)
 
@@ -406,3 +422,5 @@
         home-page
         )
 )
+
+;;)

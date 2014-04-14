@@ -3,6 +3,9 @@
             [clj-chess-engine.core :as chess]
             [clojure.string :as str]
             [clojure.set :as se]
+
+            [monger.core :as mg]
+            [monger.collection :as mc]
             [cemerick.friend :as friend]
             [clojure.core.async :refer [<! >! >!! put! take! close! chan go go-loop]]
             ;:reload-all
