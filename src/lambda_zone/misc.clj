@@ -89,7 +89,9 @@
          [:link {:href "/css/bootstrap.min.css" :rel "stylesheet" :media "screen"}]
          [:script {:src "/js/jquery.min.js" :type "text/javascript"}]
          [:script {:src "/js/bootstrap.min.js" :type "text/javascript"}]
-         (include-js "/js/chord-example.js")
+         (include-js "/js/goog/base.js")
+         (include-js "/js/root/chord-example.js")
+   [:script "goog.require('lambda_zone.client');"]
          [:script jquery]])
 
 (defn pretty-body
