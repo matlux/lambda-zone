@@ -31,7 +31,7 @@
                  [jarohen/clidget "0.2.0"]
 
                  [org.clojure/clojurescript "0.0-2202"]
-                 [org.clojure/tools.reader "0.8.4"]
+                 ;;[org.clojure/tools.reader "0.8.4"]
 
                  [prismatic/dommy "0.1.2"]
 
