@@ -13,7 +13,7 @@
                    ;;[clidget.widget :refer [defwidget]]
                    ))
 
-;;(enable-console-print!)
+(enable-console-print!)
 
 ;;(defmacro dbg[x] `(let [x# ~x] (.log js/console "dbg:" '~x "=" x#) x#)) (comment
 
@@ -327,25 +327,25 @@
 (defn update-counter
   ([counter direction]
      (if direction
-       (swap! counter inc)
-       (swap! counter dec)))
+       (inc counter)
+       (dec counter)))
   ([counter button move-count]
-     (let [c @counter
+     (let [c counter
            direction (= button "next")
            within-boundary (if direction
                              (< c move-count)
                              (< 0 c))]
-       ;;(.log js/console (str c ", move-count=" move-count ", direction=" direction))
+       (println (str c ", move-count=" move-count ", direction=" direction))
        (if within-boundary
          (update-counter counter direction)
          c))))
 
-(defn game-binder [c ]
-  (fn [$element]
-    (let [counter (atom 0)]
-      )))
+;; (defn game-binder [c ]
+;;   (fn [$element]
+;;     (let [counter (atom 0)]
+;;       )))
 
-(defwidget game-board [{:keys [game-state]} {:keys [id1 id2 move-count] :as params}]
+(defwidget game-board [{:keys [game-state]} params]
   (let [{:keys [board counter]} game-state]
     (render-replay-game (merge params
                                {:board board
@@ -354,7 +354,7 @@
 (defn listen-for-button-click! [button ch]
   (d/listen! button :click
              (fn [e]
-               (.log js/console (str "test input binder="  (d/text button)))
+               (println (str "button click listener="  (d/text button)))
                (put! ch (d/text button)))))
 
 (defn render-replay-page [!game-state button-ch params]
@@ -379,16 +379,21 @@
 ;;[:button {:type "submit" :onclick "loadFunction();" :class "btn btn-success"} "Load"]
 
 (defn watch-button-ch! [button-ch !game-state {:keys [id1 id2] :as params}]
-  (go-loop []
-    (when-let [button-event (<! button-ch)]
-      (let [{:keys [counter]} @!game-state
-            new-counter (update-counter counter button-event)
-            new-board (<! (GET (str "/board/" id1 "/" id2 "/" new-counter)))]
+  (go
+    (loop []
+      (println "about to read from channel")
+      (when-let [button-event (<! button-ch)]
+        (let [{:keys [counter max-move]} @!game-state
+              _ (println (str "watch-button-ch!: counter=" counter))
+              new-counter (update-counter counter button-event max-move)
+              new-board (<! (GET (str "/board/" id1 "/" id2 "/" new-counter)))]
 
-        (reset! !game-state {:board new-board
-                             :counter new-counter})
+          (reset! !game-state {:board new-board
+                               :counter new-counter
+                               :max-move max-move})
+          (println (str "done reset! on atom"))
 
-        ))))
+          (recur))))))
 
 (def replay-page
   (fn []  (go
@@ -398,7 +403,7 @@
            {:keys [history]} (<! (GET (str "/result/" id1 "/" id2)))
            valid-move-nb (count (filter vector? history))
 
-           !game-state (atom {:counter 0 :board (initial-board)})
+           !game-state (atom {:counter 0 :board (initial-board) :max-move (count history)})
            button-ch (doto (chan)
                        (watch-button-ch! !game-state params))]
        (js/console.log (str id1 id2 valid-move-nb))
