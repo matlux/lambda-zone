@@ -59,7 +59,7 @@
                                    :output-dir "target/resources/js"
                                    :optimizations :none
                                    :pretty-print true
-                                   ;;:source-map true
+                                   :source-map true
                                    }}]}
   ;; :cljsbuild {:builds [{:source-paths ["src"]
   ;;                       :compiler {:output-to "target/resources/js/chord-example.js"
