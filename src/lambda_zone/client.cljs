@@ -135,6 +135,7 @@
   ((js->clj (JSON/parse (:message msg)) :keywordize-keys true) :msg))
 
 (defn deserialize-json [json]
+  (.log js/console (str "deserialize-json: " (pr-str json)))
   (js->clj (JSON/parse json) :keywordize-keys true))
 
 
