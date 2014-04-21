@@ -5,12 +5,13 @@
             [goog.string.format :as gformat]
             [clojure.string :as string]
             [goog.net.XhrIo :as xhr]
-            ;;[clidget.widget :refer [defwidget] :include-macros true]
+            [clidget.widget :refer [defwidget] :include-macros true]
             )
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]
                    [dommy.macros :refer [node sel1]]
                    [lambda-zone.misc :refer [dbg]]
-                   [clidget.widget :refer [defwidget]]))
+                   ;;[clidget.widget :refer [defwidget]]
+                   ))
 
 ;;(enable-console-print!)
 
