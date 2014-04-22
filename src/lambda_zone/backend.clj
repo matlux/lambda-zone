@@ -8,6 +8,8 @@
             [monger.collection :as mc]
             [cemerick.friend :as friend]
             [clojure.core.async :refer [<! >! >!! put! take! close! chan go go-loop]]
+            [nomad :refer [defconfig]]
+            [clojure.java.io :as io]
             ;:reload-all
             )
   (:import clojure.lang.PersistentVector))
@@ -23,7 +25,18 @@
        (assoc (time (binding [*out* oldout#] ~@body)) :time (str s#)))))
 
 
+;; ---- config
+
+(defconfig my-config (io/resource "chord-example.edn"))
+
+(def data-layer-type (->> (my-config) :data-layer :type))
+(comment
+  (->> (my-config) :data-layer :type)
+)
+
 ;; ----------------------- stats
+
+
 
 (defn write-file
   "Writes a value to a file"

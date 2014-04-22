@@ -1,4 +1,10 @@
 {:frodo/config {:web {:port 3000
                       :handler lambda-zone.rest/app}
                 :nrepl {:port 7888
-                        :cljs-repl? true}}}
+                        :cljs-repl? true}}
+ :data-layer {:type :file}
+ :nomad/environments
+   { "dev"
+     {:data-layer {:type :mongodb}}
+   }
+}
