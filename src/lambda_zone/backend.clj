@@ -29,7 +29,7 @@
 
 (defconfig my-config (io/resource "chord-example.edn"))
 
-(def data-layer-type (->> (my-config) :data-layer :type))
+(defn data-layer-type [] (->> (my-config) :data-layer :type))
 (comment
   (->> (my-config) :data-layer :type)
 )
@@ -136,17 +136,153 @@
      (write-file   (-> (str @database) (str/replace #"}" "}\n\t") (str/replace #"" "")) "./db.clj")))
   )
 
+;;------------ mongo layer
+
+(defn compose-pk [inkeys]
+  (fn [data]
+    (let [append-key (fn [acc k] (str acc "/" (get data k "")))]
+      (reduce append-key "" inkeys))))
+
+;; (defn concat-keys [inkeys outkey]
+;;   (fn [data]
+;;     (let [append-key (fn [acc k] (str acc "/" (get data k "")))
+;;           pk (reduce append-key "" inkeys)]
+;;       (merge data {outkey pk}))))
+
+(defn concat-keys [comp-k-fn outkey]
+  (fn [data]
+    (merge data {outkey (comp-k-fn data)})))
+
+
+(def comp-match-key (compose-pk [:id1 :id2]))
+(def comp-contender-key (compose-pk [:id]))
+(def add-match-key (concat-keys comp-match-key :_id))
+(def add-contender-key (concat-keys comp-contender-key :_id))
+
+;;((compose-pk [:login :id]) {:login "mylog" :id "myid" :data "foo"})
+
+
+(defrecord MongoDaoSnapshot []
+  DataAccessLayerSnapshot
+  (getAllFunctions [this]
+    (mc/find-maps "contenders"))
+  (getAllMatches [this]
+    (mc/find-maps "matches"))
+  (getFunctionById [this id]
+    (mc/find-one-as-map "contenders" {:_id (comp-contender-key {:id id})}))
+  ;; (getFunctionByLoginId [this {id :id login :login :as function}]
+  ;;   (first (filter (fn [{iddb :id logindb :login}]  (and (= iddb id) (= logindb login))) (getAllFunctions dbsnapshot))))
+  )
+
+;;(mc/find-one-as-map "contenders" {:_id (comp-contender-key {:id "daredevil"})})
+
+(defrecord MongoDAO []
+  DataAccessLayer
+  (getSnapshot [this]
+    (MongoDaoSnapshot.))
+  (saveResult [this result]
+    (let [{s :score res :result id1 :id1 id2 :id2}  result
+          clean-res (add-match-key (dissoc result :board))]
+      (mc/insert "matches" clean-res)))
+  (saveFunction [this f]
+    (let [{id :id login :login c :channel :as function} f
+          cleaned-f (add-contender-key (dissoc function :channel))]
+      (mc/update "contenders" {:_id (:_id cleaned-f)} cleaned-f :upsert true)
+      (schedule-recomputation c)))
+  (deleteResultByFunction [this f]
+    (let [{id :id login :login :as function} f]
+      (mc/remove "matches"  {:id1 id})
+      (mc/remove "matches"  {:id2 id})))
+
+  ;; (deleteResultByFunction [this f]
+  ;;   (let [{id :id login :login :as function} f]
+  ;;     (mc/remove-by-id "contenders" (comp-contender-key {:id id}))))
+  )
+
+
+;; (defn reload-mongo-matches [file]
+;;   (map #(mc/insert "matches" (add-match-key %)) (->> (read-string (slurp file)) :matches)))
+
+;; (defn reload-mongo-contenders [file]
+;;   (map #(mc/insert "contenders" (add-contender-key %)) (->> (read-string (slurp file)) :contenders)))
+
+(defn reload-mongo-matches [file]
+  (map #(-> dao  (saveResult %)) (->> (read-string (slurp file)) :matches)))
+
+(defn reload-mongo-contenders [file]
+  (map #(-> dao  (saveFunction %)) (->> (read-string (slurp file)) :contenders)))
 
 
 
-
-(def dao (FileBaseDAO. (atom (read-string (slurp "./db.clj")))))
+;;(def dao (FileBaseDAO. (atom (read-string (slurp "./db.clj")))))
+(def dao (condp = (data-layer-type)
+           :mongodb (do (println "starting MongoDB connection")
+                        (mg/connect!)
+                        (MongoDAO.))
+           (do (println "starting file based persistance layer")
+               (FileBaseDAO. (atom (read-string (slurp "./db.clj")))))))
 
 (def dao-test (FileBaseDAO. (atom {:matches [{:id1 "superman" :id2 "daredevil" :score [1 0]}]
                       :contenders [{:login "Philip" :id "daredevil" :fn random-f-src}
                                    {:login "Nicholas" :id "superman" :fn random-f-src}
                                    {:login "Steve" :id "Wonderboy" :fn random-f-src }
                                    ] })))
+
+(comment
+
+  (->> dao getSnapshot getAllFunctions)
+  (-> dao getSnapshot (getFunctionById "daredevil"))
+  (->> dao getSnapshot getAllMatches)
+
+
+
+(def test {:login "mathieu.gauthron@gmail.com", :id "d", :fn "(fn random-f [{board :board, am-i-white? :white-turn, valid-moves :valid-moves, ic :in-check?, h :history, s :state}\n\t]\n                      (let [v (into [] valid-moves)\n                            iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]\n                        (let [move (rand-int (count valid-moves))]\n                          {:move (get v move), :state iteration}\n\t)))"})
+
+  (-> dao (saveFunction test))
+  (-> dao (deleteResultByFunction test))
+
+
+  (def con (mg/connect! { :host "localhost" :port 7878 }))
+  (def con (mg/connect!))
+
+  (mg/set-db! (mg/get-db "monger-test"))
+
+  (first (:matches (read-string (slurp "./db.clj"))))
+  ((concat-keys [:id1 :id2] :_id) (first (:matches (read-string (slurp "./db.clj")))))
+  (mc/insert "matches" (first (:matches (read-string (slurp "./db.clj")))))
+  (mc/insert "contenders" (first (:contenders (read-string (slurp "./db.clj")))))
+
+  (map #(mc/insert "matches" (add-match-key %)) (->> (read-string (slurp "./db.clj")) :matches))
+  (map #(mc/insert "contenders" (add-contender-key %)) (->> (read-string (slurp "./db.clj")) :contenders))
+
+  (reload-mongo-matches  "./db.clj")
+  (reload-mongo-contenders  "./db.clj")
+
+  (mc/insert "contenders" test)
+
+  (mc/find-maps "contenders" {:login "mathieu.gauthron@gmail.com"})
+  (mc/find-one-as-map "contenders" {:_id  "mathieu.gauthron@gmail.com2"})
+  (mc/find-one-as-map "contenders" {:login  "mathieu.gauthron@gmail.com"})
+
+  (mc/insert)
+
+(mc/insert "documents" {:first_name "John"  :last_name "Lennon"})
+
+(mc/find-maps "documents")
+(mc/find-maps "contenders")
+(mc/find-maps "matches")
+
+(def daredevil (comp-contender-key {:login "mathieu.gauthron@gmail.com" :id "daredevil"}))
+(def d (comp-contender-key {:login "mathieu.gauthron@gmail.com" :id "d"}))
+
+(mc/remove "contenders")
+(mc/remove "matches")
+(mc/remove "matches")
+(mc/remove-by-id "contenders" daredevil)
+(mc/remove-by-id "contenders" d)
+
+)
+
 
 
 (defn all-available-functions [db]
