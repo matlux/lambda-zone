@@ -14,9 +14,14 @@
             [ring.util.response :refer [response]]
             [ring.server.standalone :as server]
             [ring.middleware.json :as ring-json]
-                        [ring.util.response :as resp]
+            [ring.middleware.params :as ring-params]
+            [ring.middleware.keyword-params :as keyword-params]
+            [ring.middleware.nested-params :as nested-params]
+            [ring.middleware.session :as session]
+            [ring.util.response :as resp]
             [monger.core :as mg]
             [monger.collection :as mc]
+            [cemerick.drawbridge :as drawbridge]
             [cemerick.friend :as friend]
             (cemerick.friend [workflows :as workflows]
                              [credentials :as creds]
@@ -215,8 +220,25 @@
 
 ;;(back/retrieve-board "daredevil" "d" "0")
 
+;; remote repl on heroku
+
+(def drawbridge-handler
+  (-> (cemerick.drawbridge/ring-handler)
+      (keyword-params/wrap-keyword-params)
+      (nested-params/wrap-nested-params)
+      (ring-params/wrap-params)
+      (session/wrap-session)))
+
+(defn wrap-drawbridge [handler]
+  (fn [req]
+    (if (= "/repl" (:uri req))
+      (drawbridge-handler req)
+      (handler req))))
+
+
 (def app-routes
   (->
+
    (friend/authenticate
               api
               {:allow-anon? true
@@ -233,6 +255,7 @@
       (wrap-reload '(lambda-zone.rest))
       (ring-json/wrap-json-body {:keywords? true})
       (ring-json/wrap-json-response)
+      (wrap-drawbridge)
       ;;(wrap-websocket-handler)
       ))
 
@@ -275,7 +298,8 @@
 (defn start-server [& [port]]
   (http/run-server #'app
    {:port (or (to-port port)
-       (to-port (System/getenv "PORT")) ;; For deploying to Heroku
+              (to-port (System/getenv "PORT")
+                       ) ;; For deploying to Heroku
        3000)
 ;;    :session-cookie-attrs {:max-age 600}
     }))

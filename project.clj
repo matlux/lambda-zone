@@ -34,14 +34,12 @@
                  ;;[org.clojure/tools.reader "0.8.4"]
 
                  [prismatic/dommy "0.1.2"]
-
                  [org.clojure/tools.trace "0.7.5"]
-
                  [org.clojure/data.json "0.2.4"]
-
                  [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
 
                  [cheshire "5.3.1"]
+                 [com.cemerick/drawbridge "0.0.6"]
                  ]
   :min-lein-version "2.0.0"
   :plugins [[lein-pdo "0.1.1"]
