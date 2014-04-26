@@ -210,8 +210,9 @@
        (mg/connect-via-uri! (System/getenv "MONGOLAB_URI")))
      (do
        (println "starting MongoDB connection with standard parameters")
-       (mg/connect!)))
-    (mg/set-db! (mg/get-db "monger-test")))
+       (mg/connect!)
+       (mg/set-db! (mg/get-db "monger-test"))))
+    )
   )
 
 ;;(def dao (FileBaseDAO. (atom (read-string (slurp "./db.clj")))))
