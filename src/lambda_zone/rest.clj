@@ -54,38 +54,39 @@
                 {:name "MyOpenID" :url "http://username.myopenid.com/"}])
 
 
+;; (for [[k v] auth
+;;       :let [[k v] (if (= :identity k)
+;;                     ["Your OpenID identity" (str (subs v 0 (* (count v) 2/3)) "…")]
+;;                     [k v])]]
+;;   [:li [:strong (str (name k) ": ")] v])
+
 (defn openid-info [req]
   [:div {:class "panel"}
-    [:h3 "Current Status " [:small "(this will change when you log in/out)"]]
    (let [auth (friend/current-authentication req)]
      [:div (if auth
-             (do
-               [:p "Some information delivered by your OpenID provider:"
-                [:ul (for [[k v] auth
-                           :let [[k v] (if (= :identity k)
-                                         ["Your OpenID identity" (str (subs v 0 (* (count v) 2/3)) "…")]
-                                         [k v])]]
-                       [:li [:strong (str (name k) ": ")] v])]]
+             (let [{:keys [firstname lastname email]} auth]
+               [:p (str "Logged in as: " firstname " " lastname " - " email)]
                )
              [:div
-              [:p "anonymous user"]
-              [:h2 "Authenticating with various services using OpenID"]
-              [:h3 "Login with…"]
-              (for [{:keys [name url]} providers
-                    :let [base-login-url (misc/context-uri req (str "/login?identifier=" url))
-                          dom-id (str (gensym))]]
-                [:form {:method "POST" :action (misc/context-uri req "login")
-                 :onsubmit (when (.contains ^String url "username")
-                             (format "var input = document.getElementById(%s); input.value = input.value.replace('username', prompt('What is your %s username?')); return true;"
-                                     (str \' dom-id \') name))}
-          [:input {:type "hidden" :name "identifier" :value url :id dom-id}]
-          [:input {:type "submit" :class "button" :value name}]])
-       [:p "…or, with a user-provided OpenID URL:"]
-       [:form {:method "POST" :action (misc/context-uri req "login")}
-        [:input {:type "text" :name "identifier" :style "width:250px;"}]
-        [:input {:type "submit" :class "button" :value "Login"}]]])
+              [:p "You are currently an anonymous user"]
+              [:h4 "Authenticate with the service of your choice to be able to submit functions:"]
+              [:table {:class "table"}
+               [:tr (for [{:keys [name url]} providers
+                          :let [base-login-url (misc/context-uri req (str "/login?identifier=" url))
+                                dom-id (str (gensym))]]
+                      [:td [:form {:method "POST" :action (misc/context-uri req "login")
+                                   :onsubmit (when (.contains ^String url "username")
+                                               (format "var input = document.getElementById(%s); input.value = input.value.replace('username', prompt('What is your %s username?')); return true;"
+                                                       (str \' dom-id \') name))}
+                            [:input {:type "hidden" :name "identifier" :value url :id dom-id}]
+                            [:input {:type "submit" :class "button" :value name}]]])]]
+              ;;[:p "…or, with a user-provided OpenID URL:"]
+              ;; [:form {:method "POST" :action (misc/context-uri req "login")}
+              ;;  [:input {:type "text" :name "identifier" :style "width:250px;"}]
+              ;;  [:input {:type "submit" :class "button" :value "Login"}]]
+              ])
       ])
-   ;[:div {:class "panel"} [:p "req:"] [:pre (str req)]]
+                                        ;[:div {:class "panel"} [:p "req:"] [:pre (str req)]]
    ])
 
 (defn home-page-openid [req]
@@ -99,14 +100,13 @@
 
 
 (defn submit-function [req]
-  [:div {:class "panel"} [:h1 "Chess Game Engine Strategy Submission page"]
-   [:h2 "Function"]
+  [:div {:class "panel"} [:h2 "Submit a Chess Strategy:" [:a {:href "https://github.com/matlux/lamba-zone/wiki/Chess#submit-a-chess-strategy"} "?"]]
    [:form {:id "addForm" :class "form-inline" :onsubmit "return false;"}
     [:div [:input {:id "addId" :type "text" :class "form-control" :placeholder "Function Name"}]]
     [:div [:textarea {:id "addFunction" :row "80" :cols "100" :placeholder "Function Code (Clojure)"}]]
     [:button {:type "submit" :onclick "loadFunction();" :class "btn btn-success"} "Load"]
     [:button {:type "submit" :onclick "addFunctionFunction();" :class "btn btn-success"} "Upload"]
-    [:button {:type "submit" :onclick "deleteFunction();" :class "btn btn-failure"} "Delete"]
+    ;;[:button {:type "submit" :onclick "deleteFunction();" :class "btn btn-failure"} "Delete"]
     ]
    [:hr]
    [:pre {:id "addEntryResult"}]])
