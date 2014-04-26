@@ -291,16 +291,22 @@
 (def app
   #'app-routes)
 
+(defn app-handler []
+  (back/init-dao)
+  app
+  )
+
 
 (defn to-port [s]
   (when-let [port s] (Long. port)))
 
 (defn start-server [& [port]]
+  (back/init-dao)
   (http/run-server #'app
    {:port (or (to-port port)
               (to-port (System/getenv "PORT")
                        ) ;; For deploying to Heroku
-       3000)
+              3000)
 ;;    :session-cookie-attrs {:max-age 600}
     }))
 

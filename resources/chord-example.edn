@@ -1,5 +1,5 @@
 {:frodo/config {:web {:port 3000
-                      :handler lambda-zone.rest/app}
+                      :handler-fn lambda-zone.rest/app-handler}
                 :nrepl {:port 7888
                         :cljs-repl? true}}
  :data-layer {:type :mongodb}

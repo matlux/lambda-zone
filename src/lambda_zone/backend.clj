@@ -216,11 +216,24 @@
   )
 
 ;;(def dao (FileBaseDAO. (atom (read-string (slurp "./db.clj")))))
-(def dao (condp = (data-layer-type)
-           :mongodb (do (connect-mongodb)
-                        (MongoDAO.))
-           (do (println "starting file based persistance layer")
-               (FileBaseDAO. (atom (read-string (slurp "./db.clj")))))))
+(def dao (atom nil))
+
+(defn init-dao []
+  (condp = (data-layer-type)
+    :mongodb (do (connect-mongodb)
+                 (reset! dao (MongoDAO.)))
+
+    (do (println "starting file based persistance layer")
+               (reset! dao (FileBaseDAO. (atom (read-string (slurp "./db.clj"))))))))
+
+
+;; (def dao (condp = (data-layer-type)
+;;            :mongodb (do (connect-mongodb)
+;;                         (MongoDAO.))
+;;            (do (println "starting file based persistance layer")
+;;                (FileBaseDAO. (atom (read-string (slurp "./db.clj")))))))
+
+
 
 (def dao-test (FileBaseDAO. (atom {:matches [{:id1 "superman" :id2 "daredevil" :score [1 0]}]
                       :contenders [{:login "Philip" :id "daredevil" :fn random-f-src}
@@ -235,26 +248,26 @@
 ;;   (map #(mc/insert "contenders" (add-contender-key %)) (->> (read-string (slurp file)) :contenders)))
 
 (defn reload-mongo-matches [file]
-  (map #(-> dao  (saveResult %)) (->> (read-string (slurp file)) :matches)))
+  (map #(-> @dao  (saveResult %)) (->> (read-string (slurp file)) :matches)))
 
 (defn reload-mongo-contenders [file]
-  (map #(-> dao  (saveFunction %)) (->> (read-string (slurp file)) :contenders)))
+  (map #(-> @dao  (saveFunction %)) (->> (read-string (slurp file)) :contenders)))
 
 (defn to-port [s]
   (when-let [port s] (Long. port)))
 
 (comment
 
-  (->> dao getSnapshot getAllFunctions)
-  (-> dao getSnapshot (getFunctionById "daredevil"))
-  (->> dao getSnapshot getAllMatches)
+  (->> @dao getSnapshot getAllFunctions)
+  (-> @dao getSnapshot (getFunctionById "daredevil"))
+  (->> @dao getSnapshot getAllMatches)
 
 
 
 (def test {:login "mathieu.gauthron@gmail.com", :id "d", :fn "(fn random-f [{board :board, am-i-white? :white-turn, valid-moves :valid-moves, ic :in-check?, h :history, s :state}\n\t]\n                      (let [v (into [] valid-moves)\n                            iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]\n                        (let [move (rand-int (count valid-moves))]\n                          {:move (get v move), :state iteration}\n\t)))"})
 
-  (-> dao (saveFunction test))
-  (-> dao (deleteResultByFunction test))
+  (-> @dao (saveFunction test))
+  (-> @dao (deleteResultByFunction test))
 
 
   (def con (mg/connect! { :host "localhost" :port 7878 }))
@@ -347,9 +360,9 @@
 (defn select-contender-by-id [db id]
   (getFunctionById db id))
 
-;;(select-contender-by-id (getSnapshot dao) "daredevil")
+;;(select-contender-by-id (getSnapshot @dao) "daredevil")
 
-;;(count (select2functions (getSnapshot dao)))
+;;(count (select2functions (getSnapshot @dao)))
 
 ;;(@database :contenders)
 
@@ -459,7 +472,7 @@
 ;;(with-time-assoced (println "hello"))
 
 (defn load-results []
-  (getAllMatches (getSnapshot dao)))
+  (getAllMatches (getSnapshot @dao)))
 
 (defn retrieve-result [id1-match id2-match]
   (first (filter (fn [{id1 :id1 id2 :id2}] (and (= id1 id1-match) (= id2 id2-match))
@@ -477,7 +490,7 @@
 
 
 (defn save-result [result]
-  (saveResult dao result))
+  (saveResult @dao result))
 
 
 
@@ -488,17 +501,17 @@
 (defn duplicate-function? [dbsnapshot {id :id login :login :as function}]
   (some (fn [{iddb :id logindb :login}] (and (= iddb id) (not= logindb login))) (getAllFunctions dbsnapshot)))
 
-;;(duplicate-function? (getSnapshot dao) {:login "mathieu.gauthron@gmail.com" :id "d"})
-;; (getAllFunctions (getSnapshot dao))
+;;(duplicate-function? (getSnapshot @dao) {:login "mathieu.gauthron@gmail.com" :id "d"})
+;; (getAllFunctions (getSnapshot @dao))
 ;; (let [id "d" login "mathieu.gauthron@gmail.com"]
-;;   (some (fn [{iddb :id logindb :login}] (and (= iddb id) (not= logindb login))) (getAllFunctions (getSnapshot dao))))
+;;   (some (fn [{iddb :id logindb :login}] (and (= iddb id) (not= logindb login))) (getAllFunctions (getSnapshot @dao))))
 ;; (let [id "d" login "mathieu.gauthron@gmail.com"]
-;;   (map (fn [{iddb :id logindb :login}] [iddb logindb (and (= iddb id) (not= logindb login))]) (getAllFunctions (getSnapshot dao))))
+;;   (map (fn [{iddb :id logindb :login}] [iddb logindb (and (= iddb id) (not= logindb login))]) (getAllFunctions (getSnapshot @dao))))
 
 ;;(defn delete (filter (fn [{:keys [id1 id2]}] (not (or (= id1 "a") (= id2 "a")))) (:matches @database)))
 
 (defn delete-result [function]
-  (deleteResultByFunction dao function))
+  (deleteResultByFunction @dao function))
 
 ;;(delete-result-in-atom [{:id "a"}])
 
@@ -511,11 +524,11 @@
     (cond
      (not= result :ok) validation-result
      ;;(nil? login) {:return "function cannot be added anonymously. Please login with the openId above"}
-     (duplicate-function? (getSnapshot dao) f-with-identity)
+     (duplicate-function? (getSnapshot @dao) f-with-identity)
      {:return (str "function name " id ", login=" login " is already owned by a different user")}
      :else (do
 
-             (saveFunction dao f-with-identity)
+             (saveFunction @dao f-with-identity)
           (if (nil? login)
             {:return "function added anonymously"}
             {:return "function added ok"}))))
@@ -523,7 +536,7 @@
 
 (defn retrieve-function [id]
   (let [{login :email} (friend/current-authentication friend/*identity*)
-        dbsnapshot (getSnapshot dao)
+        dbsnapshot (getSnapshot @dao)
         f-pk {:login login :id id}]
     (cond
      (nil? login) {:return "function cannot be retrieved anonymously. Please login with the openId above"}
@@ -538,7 +551,7 @@
 
 
 (defn tournament [c]
-  (let [dbsnapshot (getSnapshot dao)
+  (let [dbsnapshot (getSnapshot @dao)
         match (select2functions dbsnapshot)]
    (when match
      (let [[{name1 :login fn-src1 :fn id1 :id} {name2 :name fn-src2 :fn id2 :id}] match
@@ -586,7 +599,7 @@
   (-> (assoc acc id1 (+ (get score 0) (get acc id1 0)))
       (assoc id2 (+ (get score 1) (get acc id2 0)))))
 
-;;(sort-by key (group-by #(get % 1) (into [] (reduce acc-scores {} (:matches (getSnapshot dao))))))
+;;(sort-by key (group-by #(get % 1) (into [] (reduce acc-scores {} (:matches (getSnapshot @dao))))))
 
 (defn extract-val-from-vector [[score coll]]
   (letfn [(f [[id  score]] id)]
