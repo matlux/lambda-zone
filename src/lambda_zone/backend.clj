@@ -346,9 +346,9 @@
 (defn select-contender-by-id [db id]
   (getFunctionById db id))
 
-(select-contender-by-id (getSnapshot dao) "daredevil")
+;;(select-contender-by-id (getSnapshot dao) "daredevil")
 
-(count (select2functions (getSnapshot dao)))
+;;(count (select2functions (getSnapshot dao)))
 
 ;;(@database :contenders)
 
