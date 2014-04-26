@@ -187,6 +187,7 @@
   (saveFunction [this f]
     (let [{id :id login :login c :channel :as function} f
           cleaned-f (add-contender-key (dissoc function :channel))]
+      (deleteResultByFunction this f)
       (mc/update "contenders" {:_id (:_id cleaned-f)} cleaned-f :upsert true)
       (schedule-recomputation c)))
   (deleteResultByFunction [this f]
@@ -200,6 +201,32 @@
   )
 
 
+
+(defn connect-mongodb []
+  (let [uri (System/getenv "MONGOLAB_URI")]
+    (if uri
+     (do
+       (println "starting MongoDB connection on uri" uri)
+       (mg/connect-via-uri! (System/getenv "MONGOLAB_URI")))
+     (do
+       (println "starting MongoDB connection with standard parameters")
+       (mg/connect!)))
+    (mg/set-db! (mg/get-db "monger-test")))
+  )
+
+;;(def dao (FileBaseDAO. (atom (read-string (slurp "./db.clj")))))
+(def dao (condp = (data-layer-type)
+           :mongodb (do (connect-mongodb)
+                        (MongoDAO.))
+           (do (println "starting file based persistance layer")
+               (FileBaseDAO. (atom (read-string (slurp "./db.clj")))))))
+
+(def dao-test (FileBaseDAO. (atom {:matches [{:id1 "superman" :id2 "daredevil" :score [1 0]}]
+                      :contenders [{:login "Philip" :id "daredevil" :fn random-f-src}
+                                   {:login "Nicholas" :id "superman" :fn random-f-src}
+                                   {:login "Steve" :id "Wonderboy" :fn random-f-src }
+                                   ] })))
+
 ;; (defn reload-mongo-matches [file]
 ;;   (map #(mc/insert "matches" (add-match-key %)) (->> (read-string (slurp file)) :matches)))
 
@@ -212,21 +239,8 @@
 (defn reload-mongo-contenders [file]
   (map #(-> dao  (saveFunction %)) (->> (read-string (slurp file)) :contenders)))
 
-
-
-;;(def dao (FileBaseDAO. (atom (read-string (slurp "./db.clj")))))
-(def dao (condp = (data-layer-type)
-           :mongodb (do (println "starting MongoDB connection")
-                        (mg/connect!)
-                        (MongoDAO.))
-           (do (println "starting file based persistance layer")
-               (FileBaseDAO. (atom (read-string (slurp "./db.clj")))))))
-
-(def dao-test (FileBaseDAO. (atom {:matches [{:id1 "superman" :id2 "daredevil" :score [1 0]}]
-                      :contenders [{:login "Philip" :id "daredevil" :fn random-f-src}
-                                   {:login "Nicholas" :id "superman" :fn random-f-src}
-                                   {:login "Steve" :id "Wonderboy" :fn random-f-src }
-                                   ] })))
+(defn to-port [s]
+  (when-let [port s] (Long. port)))
 
 (comment
 
@@ -263,6 +277,9 @@
   (mc/find-maps "contenders" {:login "mathieu.gauthron@gmail.com"})
   (mc/find-one-as-map "contenders" {:_id  "mathieu.gauthron@gmail.com2"})
   (mc/find-one-as-map "contenders" {:login  "mathieu.gauthron@gmail.com"})
+
+  (mc/find-one-as-map "matches" {:_id  "/d/daredevil"})
+
 
   (mc/insert)
 
@@ -470,6 +487,13 @@
 (defn duplicate-function? [dbsnapshot {id :id login :login :as function}]
   (some (fn [{iddb :id logindb :login}] (and (= iddb id) (not= logindb login))) (getAllFunctions dbsnapshot)))
 
+;;(duplicate-function? (getSnapshot dao) {:login "mathieu.gauthron@gmail.com" :id "d"})
+;; (getAllFunctions (getSnapshot dao))
+;; (let [id "d" login "mathieu.gauthron@gmail.com"]
+;;   (some (fn [{iddb :id logindb :login}] (and (= iddb id) (not= logindb login))) (getAllFunctions (getSnapshot dao))))
+;; (let [id "d" login "mathieu.gauthron@gmail.com"]
+;;   (map (fn [{iddb :id logindb :login}] [iddb logindb (and (= iddb id) (not= logindb login))]) (getAllFunctions (getSnapshot dao))))
+
 ;;(defn delete (filter (fn [{:keys [id1 id2]}] (not (or (= id1 "a") (= id2 "a")))) (:matches @database)))
 
 (defn delete-result [function]
@@ -487,7 +511,7 @@
      (not= result :ok) validation-result
      ;;(nil? login) {:return "function cannot be added anonymously. Please login with the openId above"}
      (duplicate-function? (getSnapshot dao) f-with-identity)
-     {:return (str "function name " id " is already owned by a different user")}
+     {:return (str "function name " id ", login=" login " is already owned by a different user")}
      :else (do
 
              (saveFunction dao f-with-identity)
@@ -495,6 +519,7 @@
             {:return "function added anonymously"}
             {:return "function added ok"}))))
   )
+
 (defn retrieve-function [id]
   (let [{login :email} (friend/current-authentication friend/*identity*)
         dbsnapshot (getSnapshot dao)

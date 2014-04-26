@@ -2,9 +2,11 @@
                       :handler lambda-zone.rest/app}
                 :nrepl {:port 7888
                         :cljs-repl? true}}
- :data-layer {:type :file}
+ :data-layer {:type :mongodb}
  :nomad/environments
    { "dev"
      {:data-layer {:type :mongodb}}
+     "test"
+     {:data-layer {:type :file}}
    }
 }
