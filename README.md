@@ -4,7 +4,9 @@ A Clojure website for chess strategy functions
 
 ## Usage
 
-Fix me.
+Go to the live Website [lambda-zone.com](http://www.lambda-zone.com).
+
+Documentation available [under](https://github.com/matlux/lambda-zone/wiki/Chess).
 
 ## License
 
