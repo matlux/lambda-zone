@@ -123,7 +123,7 @@
     ;;    bind-input!)]
     [:div
 
-     [:h3 "State:"]
+     [:h3 "Current Tournament:"]
      (doto (node [:div])
        bind-list!)])))
 
@@ -187,11 +187,11 @@
   (node
    (list
     [:div [:table {:class "table"}
-           [:tr [:td "function"] [:td "score"] [:td "rank"]]
+           [:tr [:td [:b "Function Names"]] [:td [:b "Score"]] [:td [:b "Ranking"]]]
            (for [[id score rank] (rank matches)]
              [:tr [:td id] [:td (pr-str score)] [:td (pr-str rank)]])]]
     [:div [:table {:class "table"}
-           [:tr [:td "opponents"] [:td "score"] [:td "reason"]]
+           [:tr [:td [:b "Opponents"]] [:td [:b "Score"]] [:td [:b "Reason"]]]
            (for [{:keys [id1 id2 score result]} matches]
              [:tr [:td (link-to (to-result-page id1 id2) (str id1 " vs " id2))]
               [:td (link-to (to-result-page id1 id2) (pr-str score))]
