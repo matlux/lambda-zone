@@ -100,7 +100,7 @@
 
 
 (defn submit-function [req]
-  [:div {:class "panel"} [:h2 "Submit a Chess Strategy:" [:a {:href "https://github.com/matlux/lamba-zone/wiki/Chess#submit-a-chess-strategy"} "?"]]
+  [:div {:class "panel"} [:h2 "Submit a Chess Strategy:" [:a {:href "https://github.com/matlux/lambda-zone/wiki/Chess#submit-a-chess-strategy"} "?"]]
    [:form {:id "addForm" :class "form-inline" :onsubmit "return false;"}
     [:div [:input {:id "addId" :type "text" :class "form-control" :placeholder "Function Name"}]]
     [:div [:textarea {:id "addFunction" :row "80" :cols "100" :placeholder "Function Code (Clojure)"}]]
