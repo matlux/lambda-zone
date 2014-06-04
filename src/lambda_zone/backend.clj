@@ -568,7 +568,7 @@
            res (save-result result-with-id)
            finalres (load-results)
            ]
-       (println "game finished. About to write result into channel:" c finalres)
+       (println "game finished. About to write result into channel:" c) ;;finalres
        ;;(>!! c (merge (dissoc result-with-id :history) {:msg-type :publish-game-result}))
        (>!! c  {:msg-type :full-results :matches finalres})
        (println "message was sent to channel" c)

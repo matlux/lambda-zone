@@ -101,16 +101,18 @@
 
 
 (defn submit-function [req]
-  [:div {:class "panel"} [:h2 "Submit a Chess Strategy:" [:a {:href "https://github.com/matlux/lambda-zone/wiki/Chess#submit-a-chess-strategy"} "?"]]
-   [:form {:id "addForm" :class "form-inline" :onsubmit "return false;"}
-    [:div [:input {:id "addId" :type "text" :class "form-control" :placeholder "Function Name" :value "foo"}]]
-    [:div [:textarea {:id "addFunction" :row "80" :cols "100" :placeholder "Function Code (Clojure)"}]]
-    [:button {:type "submit" :onclick "loadFunction();" :class "btn btn-success"} "Load"]
-    [:button {:type "submit" :onclick "addFunctionFunction();" :class "btn btn-success"} "Submit"]
-    ;;[:button {:type "submit" :onclick "deleteFunction();" :class "btn btn-failure"} "Delete"]
-    ]
-   [:hr]
-   [:pre {:id "addEntryResult"}]])
+  (let [{login :email :as auth} (friend/current-authentication req)
+        fn-name (if (nil? login) "anonymous" login)]
+   [:div {:class "panel"} [:h2 "Submit a Chess Strategy:" [:a {:href "https://github.com/matlux/lambda-zone/wiki/Chess#submit-a-chess-strategy"} "(help?)"]]
+    [:form {:id "addForm" :class "form-inline" :onsubmit "return false;"}
+     [:div [:input {:id "addId" :type "text" :class "form-control" :placeholder "Function Name" :value (str fn-name (rand-int 100))}]]
+     [:div [:textarea {:id "addFunction" :row "80" :cols "100" :placeholder "Function Code (Clojure)"} (str back/random-f-src)]]
+     [:button {:type "submit" :onclick "loadFunction();" :class "btn btn-success"} "Load"]
+     [:button {:type "submit" :onclick "addFunctionFunction();" :class "btn btn-success"} "Submit"]
+     ;;[:button {:type "submit" :onclick "deleteFunction();" :class "btn btn-failure"} "Delete"]
+     ]
+    [:hr]
+    [:pre {:id "addEntryResult"}]]))
 
 (defn home-page [req] (h/html5
   misc/pretty-head
