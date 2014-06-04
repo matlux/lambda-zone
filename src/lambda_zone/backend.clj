@@ -311,6 +311,9 @@
 (mc/remove "matches")
 (mc/remove-by-id "contenders" daredevil)
 (mc/remove-by-id "contenders" d)
+(mc/remove-by-id "contenders" (comp-match-key {:id1 "d3"}))
+(mc/remove-by-id "contenders" (comp-contender-key {:id "d3"}))
+
 
 )
 
