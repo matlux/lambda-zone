@@ -2,9 +2,23 @@
 
 A Clojure website for chess strategy functions
 
+
+
+Go to this [video](https://skillsmatter.com/skillscasts/5336-adatx-test-driven-development-lambda-chess) which explains the concepts of this application.
+
+[lambda.zone](http://lambda.zone) is a website which is similar to TryClojure and 4Clojure websites, it provides developers a platform to submit their own code, in this case a Chess strategy written in Clojure. Their aim is to compete to get the highest ranking.
+
+Developers just need to implement a single function which the platform executes against every other algorithms previously submitted and updates the stats.
+
+The platform publicly lists the ranking of each algorithm and enables human players to measure themselves interactively against a published strategy of their choice.
+
+In this presentation we will review the design choices of the application and analyse how Clojure is providing a unique set of features which are necessary to implement a platform of this kind.
+
+Check out the slides from Mathieu's talk via the following [link!](http://slides-skillsmatter.lambda.zone/#/)
+
 ## Usage
 
-Go to the live Website [lambda-zone.com](http://www.lambda-zone.com).
+Go to the live Website [www.lambda.com](http://lambda.zone).
 
 Documentation available [under](https://github.com/matlux/lambda-zone/wiki/Chess).
 
