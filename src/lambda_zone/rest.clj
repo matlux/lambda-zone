@@ -18,6 +18,7 @@
             [ring.middleware.keyword-params :as keyword-params]
             [ring.middleware.nested-params :as nested-params]
             [ring.middleware.session :as session]
+            [ring.middleware.basic-authentication :as ring-basic]
             [ring.util.response :as resp]
             [monger.core :as mg]
             [monger.collection :as mc]
@@ -102,10 +103,10 @@
 (defn submit-function [req]
   [:div {:class "panel"} [:h2 "Submit a Chess Strategy:" [:a {:href "https://github.com/matlux/lambda-zone/wiki/Chess#submit-a-chess-strategy"} "?"]]
    [:form {:id "addForm" :class "form-inline" :onsubmit "return false;"}
-    [:div [:input {:id "addId" :type "text" :class "form-control" :placeholder "Function Name"}]]
+    [:div [:input {:id "addId" :type "text" :class "form-control" :placeholder "Function Name" :value "foo"}]]
     [:div [:textarea {:id "addFunction" :row "80" :cols "100" :placeholder "Function Code (Clojure)"}]]
     [:button {:type "submit" :onclick "loadFunction();" :class "btn btn-success"} "Load"]
-    [:button {:type "submit" :onclick "addFunctionFunction();" :class "btn btn-success"} "Upload"]
+    [:button {:type "submit" :onclick "addFunctionFunction();" :class "btn btn-success"} "Submit"]
     ;;[:button {:type "submit" :onclick "deleteFunction();" :class "btn btn-failure"} "Delete"]
     ]
    [:hr]
@@ -229,12 +230,16 @@
       (ring-params/wrap-params)
       (session/wrap-session)))
 
+(defn authenticated? [name pass]
+  (= [name pass] [(System/getenv "AUTH_USER") (System/getenv "AUTH_PASS")]))
+
 (defn wrap-drawbridge [handler]
   (fn [req]
-    (if (= "/repl" (:uri req))
-      (drawbridge-handler req)
+    (let [handler (if (= "/repl" (:uri req))
+                    (ring-basic/wrap-basic-authentication
+                     drawbridge-handler authenticated?)
+                    handler)]
       (handler req))))
-
 
 (def app-routes
   (->

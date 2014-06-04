@@ -12,6 +12,7 @@
                  [ring-server "0.2.8" :exclusions [[org.clojure/clojure]
                                                    [ring]]]
                  [ring/ring-json "0.2.0"]
+                 [ring-basic-authentication "1.0.1"]
 
                  ;;mongdb
                  [com.novemberain/monger "1.7.0"]
