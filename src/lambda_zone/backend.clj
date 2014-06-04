@@ -379,7 +379,7 @@
 ;; (defn eval-form-safely [form]
 ;;   (fn [in] ((chess/sb) (list form in))))
 (defn eval-form-safely [form]
-  (chess/sb form 6000))
+  (chess/sb form 40000))
 
 (defn compile-fn-verbosed [f src]
   (if (nil? f)
@@ -526,7 +526,8 @@
     (println "auth:" auth)
     (cond
      (not= result :ok) validation-result
-     ;;(nil? login) {:return "function cannot be added anonymously. Please login with the openId above"}
+     (nil? login) {:return "function cannot be added anonymously. Please login with the openId above"} ;; comment this for test without login
+     (= id "") {:return "function name cannot be empty"}
      (duplicate-function? (getSnapshot @dao) f-with-identity)
      {:return (str "function name " id ", login=" login " is already owned by a different user")}
      :else (do
