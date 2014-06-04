@@ -379,7 +379,7 @@
 ;; (defn eval-form-safely [form]
 ;;   (fn [in] ((chess/sb) (list form in))))
 (defn eval-form-safely [form]
-  (chess/sb form 40000))
+  (chess/sb form 60000))
 
 (defn compile-fn-verbosed [f src]
   (if (nil? f)
@@ -407,7 +407,7 @@
          [fn-exp & sx] form
          [name & sx2] (if (symbol? (first sx)) sx (conj sx nil)  )
          ]
-     (cond (and (not= fn-exp 'fn) (not= fn-exp 'fn*)) {:result "submitted code is not a function" :reason "fn of fn* missing at beginning of function"}
+     (cond (and (not= fn-exp 'fn) (not= fn-exp 'fn*)) {:result "submitted code is not a function" :reason "fn or fn* missing at beginning of function"}
            (or
             (and (list? (first sx2)) (every? #(not (single-param? %)) sx2))
             (not (single-param? (first sx2)))) {:result "function should accept one argument"}

@@ -197,7 +197,7 @@
         (let [;;[{:keys [board message move score id1 id2 iteration] :as val} c]  (alts! [ws sink])
               {:keys [board iteration msg-type] :as val} (<! sink) ;;(alts! [sink (timeout 10000)])
               ]
-          (println "Message received test:" val )
+          (println "Message received test:" (dissoc val :move-history) )
           (when val
             (println "Message received test+++; about to sent to WS" )
             (>! ws (json/generate-string {:msg (route-msg2client val) }))
