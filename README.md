@@ -18,9 +18,25 @@ Check out the slides from Mathieu's talk via the following [link!](http://slides
 
 ## Usage
 
-Go to the live Website [www.lambda.com](http://lambda.zone).
+Go to the live Website [www.lambda.zone](http://lambda.zone).
 
 Documentation available [under](https://github.com/matlux/lambda-zone/wiki/Chess).
+
+## Structure of the project
+
+[http://lambda-zone](http://lambda-zone) is a website composed of various components available on GitHub:
+
+* [lambda-zone](https://github.com/matlux/lambda-zone) - website source code
+* [clj-chess-engine](https://github.com/matlux/clj-chess-engine) - pure chess engine code
+* [lambda-chess](https://github.com/matlux/lambda-chess) - chess strategy SDK for website user to use to develop their own strategy.
+* [connect4](https://github.com/matlux/clj-chess-engine) - pure connect4 Engine
+
+This forum is to discuss about the lambda.zone platform current and future features.
+
+
+## Join the [Google group](https://groups.google.com/forum/#!forum/lambda-zone) discussion
+
+[https://groups.google.com/forum/#!forum/lambda-zone](https://groups.google.com/forum/#!forum/lambda-zone)
 
 ## License
 
