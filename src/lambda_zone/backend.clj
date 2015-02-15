@@ -393,10 +393,7 @@
   (filter (fn [[head &rest]] (and
                      (= head 'defn)))
           exprs))
-(comment
-  ;create a unit test
-  (find-defn-exprs '( (def a 1) (defn b [] (+ 1 1)) (defn -main [] (b)) (defn f [a b] (+ a b))))
-  )
+
 
 (defn find-main [exprs]
   (let [defn-exprs (find-defn-exprs exprs)]
@@ -407,30 +404,20 @@
       (last defn-exprs))))
 
 
-(comment
-  ;TODO create a test
-  (find-main '( (def a 1) (defn b [] (+ 1 1)) (defn -main [] (b)) (defn f [a b] (+ a b))))
-  (find-main '( (def a 1) (defn b [] (+ 1 1)) (defn f [a b] (+ a b))))
-  )
-
 (defn find-defn-exprs-less-main [exprs]
   (->> exprs
       (find-defn-exprs)
       (filter (fn [[first second &rest]]
                 (not (= second '-main))))))
 
-(comment
-;TODO create a test
-  (find-defn-exprs-less-main '( (def a 1) (defn b [] (+ 1 1)) (defn -main [] (b)) (defn f [a b] (+ a b))))
 
-  )
                                         ;TODO Start here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ; we have to check if it's not already a lambda and do nothing then
 (defn wrap-exprs-in-lambda [exprs]
   (if (not-lambda-expression? exprs)
     (let [def-exprs (find-def-exprs exprs)
           main-fn  (find-main exprs)
-          fn-exprs-less-main (find-defn-exprs exprs)
+          fn-exprs-less-main (find-defn-exprs-less-main exprs)
           def-bindings (mapcat extract-binding def-exprs)
           fn-bindings (mapcat extract-fn-binding fn-exprs-less-main)
           main-fn-value (-> main-fn
@@ -446,24 +433,6 @@
      exprs ))
 
 
-(comment
-                                        ;TODO create a test
-  (wrap-exprs-in-lambda '(
-                          (def a 12)
-                          (defn b [c] (+ a c))
-                          (defn random-f
-                            [{board :board, am-i-white? :white-turn?, valid-moves :valid-moves, ic :in-check?, h :history, s :state}]
-                            (let [v (into [] valid-moves)
-                                  iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 (count  s)))]
-                              (let [move (rand-int (count valid-moves))]
-                                {:move (get v move), :state iteration})))
-                          (defn -main [board] (do (println (b a )) (random-f board)))))
-  (wrap-exprs-in-lambda '(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
-                           (let [v (into [] valid-moves)
-                                 iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
-                             (let [move (rand-int (count valid-moves))]
-                               {:move (get v move) :state iteration})) ))
-  )
 
 ;; (defn eval-form-safely [form]
 ;;   (fn [in] ((chess/sb) (list form in))))
@@ -482,18 +451,6 @@
        (eval-form-safely (read-string src))
        ;;(fn [in] ((chess/sb) (list (read-string src) in)));; (fn [in] ((sb) (list random-f-form in)))
        f)))
-
-(comment
-  (chess/sb (wrap-exprs-in-lambda '(
-                          (def a 12)
-                          (defn b [c] (+ a c))
-                          (defn random-f
-                            [{board :board, am-i-white? :white-turn?, valid-moves :valid-moves, ic :in-check?, h :history, s :state}]
-                            (let [v (into [] valid-moves)
-                                  iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 (count  s)))]
-                              (let [move (rand-int (count valid-moves))]
-                                {:move (get v move), :state iteration})))
-                          (defn -main [board] (do (println (b a )) (random-f board)))))))
 
 (defn single-param? [param]
   (and (vector? param) (= (count param) 1)))
@@ -518,18 +475,7 @@
      )
     {:result :not-valid-function :reason "define an fn form"}))
 
-(comment
-  (validate-form
-   (wrap-exprs-in-lambda
-    (read-string "((def a 12)
-                          (defn b [c] (+ a c))
-                          (defn random-f
-                            [{board :board, am-i-white? :white-turn?, valid-moves :valid-moves, ic :in-check?, h :history, s :state}]
-                            (let [v (into [] valid-moves)
-                                  iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 (count  s)))]
-                              (let [move (rand-int (count valid-moves))]
-                                {:move (get v move), :state iteration})))
-                          (defn -main [board] (do (println (b a )) (random-f board))))"))))
+
 
 (defn evaluate-and-catch [form]
   (try
@@ -551,18 +497,7 @@
                 ))))
     (catch Throwable e {:result (str "caught exception: " (.getMessage e))})))
 
-(comment
-  (validate-compile-exec (wrap-exprs-in-lambda
-    (read-string "((def a 12)
-                          (defn b [c] (+ a c))
-                          (defn random-f
-                            [{board :board, am-i-white? :white-turn?, valid-moves :valid-moves, ic :in-check?, h :history, s :state}]
-                            (let [v (into [] valid-moves)
-                                  iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 (count  s)))]
-                              (let [move (rand-int (count valid-moves))]
-                                {:move (get v move), :state iteration})))
-                          (defn -main [board] (do (println (b a )) (random-f board))))")))
-  )
+
 
 
 (defn validate-read-string [src]
@@ -582,33 +517,7 @@
          val-form)
        ))))
 
-(comment
 
-
-  (validate-fn "((def a 12)
-                          (defn b [c] (+ a c))
-                          (defn random-f
-                            [{board :board, am-i-white? :white-turn?, valid-moves :valid-moves, ic :in-check?, h :history, s :state}]
-                            (let [v (into [] valid-moves)
-                                  iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 (count  s)))]
-                              (let [move (rand-int (count valid-moves))]
-                                {:move (get v move), :state iteration})))
-                          (defn -main [board] (do (println (b a )) (random-f board))))")
-
-  (validate-compile-exec (-> "((def a 12)
-                          (defn b [c] (+ a c))
-                          (defn random-f
-                            [{board :board, am-i-white? :white-turn?, valid-moves :valid-moves, ic :in-check?, h :history, s :state}]
-                            (let [v (into [] valid-moves)
-                                  iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 (count  s)))]
-                              (let [move (rand-int (count valid-moves))]
-                                {:move (get v move), :state iteration})))
-                          (defn -main [board] (do (println (b a )) (random-f board))))"
-                     validate-read-string
-                     wrap-exprs-in-lambda
-                     validate-form
-                     ))
-  )
 
 ;;(validate-fn random-f-src)
 ;;(validate-fn "#(+ 1 1)")
