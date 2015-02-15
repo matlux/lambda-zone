@@ -386,7 +386,6 @@
 
 
 (defn find-def-exprs [exprs]
-  "TODO this is wrong btw, (def f (fn [a] (+ 1 a))) would match it but is not a variable binding, not sure if it matters or not (TEST!)"
   (filter #(-> % first (= 'def)) exprs))
 
 (defn find-defn-exprs [exprs]
