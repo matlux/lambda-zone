@@ -2,7 +2,7 @@
 
 A Clojure website for chess strategy functions
 
-[![Build Status](https://travis-ci.org/matlux/lambda-zone?branch=master)](https://travis-ci.org/matlux/lambda-zone)
+[![Build Status](https://travis-ci.org/matlux/lambda-zone.svg?branch=master)](https://travis-ci.org/matlux/lambda-zone)
 
 Go to this [video](https://skillsmatter.com/skillscasts/5336-adatx-test-driven-development-lambda-chess) which explains the concepts of this application.
 
