@@ -559,9 +559,9 @@
 
 (deftest function-raises-exception
   (testing ""
-    (is (= (play-game {:board (initial-board) :f1 exception-f :f2 exception-f})
+    (is (= (dissoc (play-game {:board (initial-board) :f1 exception-f :f2 exception-f}) :stacktrace :exception)
            {:score [0 1]
-            :history [ex]
+            :history [:exception]
             :board [\r \n \b \q \k \b \n \r
               \p \p \p \p \p \p \p \p
               \- \- \- \- \- \- \- \-
@@ -813,7 +813,7 @@
 
 
 (deftest dont-kill-the-king2
-  (testing ""
+  (testing "don't kill the king2"
     (is (= (play-game-rec {:board [\- \- \- \r \- \- \- \r
                                  \p \b \- \p \- \- \- \N
                                  \- \- \p \k \- \- \p \-
