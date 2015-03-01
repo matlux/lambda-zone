@@ -437,13 +437,11 @@
          (-main# board#)))))
 
 ; we have to check if it's not already a lambda and do nothing then
-(defn validate-format [exprs]
-  (if (not-lambda-expression? exprs)
-    (if (and (coll? exprs) (coll? (first exprs)))
-      (wrap-forms-in-lambda exprs)
-      (wrap-forms-in-lambda [exprs]))
+(defn validate-code-format [[first & rest :as forms]]
+  (if (not-lambda-expression? first)
+    (wrap-forms-in-lambda forms)
     ;user created a single lamda, not need to wrap
-     exprs ))
+     first))
 
 
 
@@ -521,7 +519,7 @@
 ;;(parse-error? {:result :not-valid-clojure-form})
 
 (defn validate-fn [src]
-  (let [form (validate-format (validate-read-string src))]
+  (let [form (validate-code-format (validate-read-string (str "[" src "]")))]
     (if (parse-error? form)
       form
       (let [{res-validation :result :as val-form} (validate-form form)]

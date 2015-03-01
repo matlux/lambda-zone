@@ -896,12 +896,12 @@
 
 (deftest if-lambda-expr-already-dont-rewrite
   (is "no wrapping if already a single lambda expression"
-      (= (lz/validate-format
-          '(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
-  (let [v (into [] valid-moves)
-        iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
-    (let [move (rand-int (count valid-moves))]
-      {:move (get v move) :state iteration})) ))
+      (= (lz/validate-code-format
+          '((fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
+               (let [v (into [] valid-moves)
+                     iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
+                 (let [move (rand-int (count valid-moves))]
+                   {:move (get v move) :state iteration})) )))
          '(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
   (let [v (into [] valid-moves)
         iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
@@ -910,7 +910,7 @@
 
 (deftest when-exprs-wrap-in-lambda
   (is "when user provides list of expressions, not single lambda, expect wrapping"
-      (= (first (lz/validate-format
+      (= (first (lz/validate-code-format
                  '((def i 1)
                    (defn get-iteration [s]
                      (if (nil? s) (+ i (if am-i-white? 0 1)) (+ 2 (count  s))))
@@ -922,6 +922,38 @@
                          {:move (get v move), :state iteration})))
                    (defn -main [board] (do (println "Starting move") (random-f board))))))
          'clojure.core/fn)))
+
+(deftest when-string-with-forms-not-wrapped-expect-result-ok
+  (is "when user provides list of def and defn expressions wrap them in list of forms and expect to pass validation"
+      (= (lz/validate-fn "(def a 12)
+                          (defn b [c] (+ a c))
+                          (defn random-f
+                            [{board :board, am-i-white? :white-turn?, valid-moves :valid-moves, ic :in-check?, h :history, s :state}]
+                            (let [v (into [] valid-moves)
+                                  iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 (count  s)))]
+                              (let [move (rand-int (count valid-moves))]
+                                {:move (get v move), :state iteration})))
+                          (defn -main [board] (do (println (b a )) (random-f board)))")
+         {:result :ok})))
+
+(deftest when-string-with-forms-not-wrapped-expect-result-ok
+  (is "when user provides list of def and defn expressions wrap them in list of forms and expect to pass validation"
+      (= (lz/validate-fn "(def -main (fn
+                            [{board :board, am-i-white? :white-turn?, valid-moves :valid-moves, ic :in-check?, h :history, s :state}]
+                            (let [v (into [] valid-moves)
+                                  iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 (count  s)))]
+                              (let [move (rand-int (count valid-moves))]
+                                {:move (get v move), :state iteration}))))")
+         {:result :ok})))
+
+(deftest when-string-with-forms-not-wrapped-expect-result-ok
+  (is "when user provides list of def and defn expressions wrap them in list of forms and expect to pass validation"
+      (= (lz/validate-fn "(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
+                           (let [v (into [] valid-moves)
+                                 iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
+                             (let [move (rand-int (count valid-moves))]
+                               {:move (get v move) :state iteration})) )")
+         {:result :ok})))
 
 (comment
 '(
@@ -939,7 +971,7 @@
     (defn -main [board] (do (println "Starting move") (random-f board)))))
 
 (comment
-  (sb (lz/wrap-exprs-in-lambda '(
+  (sb (lz/validate-code-format '(
 
     (def i 1)
     (defn get-iteration [s am-i-white?]
@@ -957,7 +989,7 @@
 
 (comment
                                         ;TODO create a test
-  (lz/validate-format '(
+  (lz/validate-code-format '(
                           (def a 12)
                           (defn b [c] (+ a c))
                           (defn random-f
@@ -967,12 +999,12 @@
                               (let [move (rand-int (count valid-moves))]
                                 {:move (get v move), :state iteration})))
                           (defn -main [board] (do (println (b a )) (random-f board)))))
-  (lz/validate-format '(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
-                           (let [v (into [] valid-moves)
-                                 iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
-                             (let [move (rand-int (count valid-moves))]
-                               {:move (get v move) :state iteration})) ))
-  (lz/validate-format '(def -main (fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
+  (lz/validate-code-format '( (fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
+                                (let [v (into [] valid-moves)
+                                      iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
+                                  (let [move (rand-int (count valid-moves))]
+                                    {:move (get v move) :state iteration})) )))
+  (lz/validate-code-format '(def -main (fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
                            (let [v (into [] valid-moves)
                                  iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
                              (let [move (rand-int (count valid-moves))]
@@ -994,6 +1026,7 @@
 
     )
 
+
 (comment
 ;TODO create a test
   (lz/find-defn-forms-less-main '( (def a 1) (defn b [] (+ 1 1)) (defn -main [] (b)) (defn f [a b] (+ a b))))
@@ -1009,8 +1042,8 @@
 
 (comment
   (lz/validate-form
-   (lz/validate-format
-    (read-string "((def a 12)
+   (lz/validate-code-format
+    (read-string "[(def a 12)
                           (defn b [c] (+ a c))
                           (defn random-f
                             [{board :board, am-i-white? :white-turn?, valid-moves :valid-moves, ic :in-check?, h :history, s :state}]
@@ -1018,12 +1051,12 @@
                                   iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 (count  s)))]
                               (let [move (rand-int (count valid-moves))]
                                 {:move (get v move), :state iteration})))
-                          (defn -main [board] (do (println (b a )) (random-f board))))"))))
+                          (defn -main [board] (do (println (b a )) (random-f board)))]"))))
 
 (comment
   (lz/validate-compile-exec
-   (lz/wrap-exprs-in-lambda
-    (read-string "((def a 12)
+   (lz/validate-format
+    (read-string "(def a 12)
                           (defn b [c] (+ a c))
                           (defn random-f
                             [{board :board, am-i-white? :white-turn?, valid-moves :valid-moves, ic :in-check?, h :history, s :state}]
@@ -1031,7 +1064,7 @@
                                   iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 (count  s)))]
                               (let [move (rand-int (count valid-moves))]
                                 {:move (get v move), :state iteration})))
-                          (defn -main [board] (do (println (b a )) (random-f board))))")))
+                          (defn -main [board] (do (println (b a )) (random-f board)))")))
   )
 
 (comment
