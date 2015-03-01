@@ -896,7 +896,7 @@
 
 (deftest if-lambda-expr-already-dont-rewrite
   (is "no wrapping if already a single lambda expression"
-      (= (lz/wrap-exprs-in-lambda
+      (= (lz/validate-format
           '(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
   (let [v (into [] valid-moves)
         iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
@@ -910,7 +910,7 @@
 
 (deftest when-exprs-wrap-in-lambda
   (is "when user provides list of expressions, not single lambda, expect wrapping"
-      (= (first (lz/wrap-exprs-in-lambda
+      (= (first (lz/validate-format
                  '((def i 1)
                    (defn get-iteration [s]
                      (if (nil? s) (+ i (if am-i-white? 0 1)) (+ 2 (count  s))))
@@ -967,11 +967,16 @@
                               (let [move (rand-int (count valid-moves))]
                                 {:move (get v move), :state iteration})))
                           (defn -main [board] (do (println (b a )) (random-f board)))))
-  (lz/wrap-exprs-in-lambda '(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
+  (lz/validate-format '(fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
                            (let [v (into [] valid-moves)
                                  iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
                              (let [move (rand-int (count valid-moves))]
                                {:move (get v move) :state iteration})) ))
+  (lz/validate-format '(def -main (fn random-f [{board :board am-i-white? :white-turn valid-moves :valid-moves ic :in-check? h :history s :state}]
+                           (let [v (into [] valid-moves)
+                                 iteration (if (nil? s) (+ 1 (if am-i-white? 0 1)) (+ 2 s))]
+                             (let [move (rand-int (count valid-moves))]
+                               {:move (get v move) :state iteration})) )))
 
     (lz/find-main '(
 
