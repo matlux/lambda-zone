@@ -383,51 +383,65 @@
 (defn extract-fn-binding [[_ name args & body]]
   [(symbol name) `(fn [~@args] ~(first body))])
 
+(defn is-defn-form? [[head &rest]]
+  (= head 'defn))
+
+(defn is-def-form? [[head &rest]]
+  (= head 'def))
+
+(defn is-main-form? [[first second & rest]]
+  (= second '-main))
+
+(defn find-def-forms [forms]
+  (filter is-def-form? forms))
+
+(defn find-defn-forms [forms]
+  (filter is-defn-form? forms))
 
 
-(defn find-def-exprs [exprs]
-  (filter #(-> % first (= 'def)) exprs))
+(defn find-main [forms]
+  (let [defn-forms (find-defn-forms forms)]
+    (if-let [main-named-fn (seq (filter is-main-form? forms))]
+      (first main-named-fn)
+      (last defn-forms))))
 
-(defn find-defn-exprs [exprs]
-  (filter (fn [[head &rest]] (and
-                     (= head 'defn)))
-          exprs))
-
-
-(defn find-main [exprs]
-  (let [defn-exprs (find-defn-exprs exprs)]
-    (if-let [main-named-fn (seq (filter
-                                 #(-> % second (= '-main))
-                                 defn-exprs))]
-      main-named-fn
-      (last defn-exprs))))
+(defn extract-main-binding [main-fn]
+  (second
+   (if (is-defn-form? main-fn)
+             (extract-fn-binding main-fn)
+             (extract-binding main-fn))))
 
 
-(defn find-defn-exprs-less-main [exprs]
-  (->> exprs
-      (find-defn-exprs)
-      (filter (fn [[first second &rest]]
-                (not (= second '-main))))))
+(defn find-defn-forms-less-main [forms]
+  (->> forms
+      (find-defn-forms)
+      (filter (complement is-main-form?))))
+
+(defn find-def-forms-less-main [forms]
+  (->> forms
+       (find-def-forms)
+       (filter (complement is-main-form?))))
 
 
-                                        ;TODO Start here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+(defn wrap-forms-in-lambda [forms]
+  (let [def-forms (find-def-forms-less-main forms)
+        main-fn  (find-main forms)
+        fn-forms-less-main (find-defn-forms-less-main forms)
+        def-bindings (mapcat extract-binding def-forms)
+        fn-bindings (mapcat extract-fn-binding fn-forms-less-main)
+        main-fn-value (extract-main-binding main-fn)]
+    `(fn [board#]
+       (let [~@def-bindings
+             ~@fn-bindings
+             -main# ~main-fn-value]
+         (-main# board#)))))
+
 ; we have to check if it's not already a lambda and do nothing then
-(defn wrap-exprs-in-lambda [exprs]
+(defn validate-format [exprs]
   (if (not-lambda-expression? exprs)
-    (let [def-exprs (find-def-exprs exprs)
-          main-fn  (find-main exprs)
-          fn-exprs-less-main (find-defn-exprs-less-main exprs)
-          def-bindings (mapcat extract-binding def-exprs)
-          fn-bindings (mapcat extract-fn-binding fn-exprs-less-main)
-          main-fn-value (-> main-fn
-                            first
-                            extract-fn-binding
-                            second)]
-      `(fn [board#]
-         (let [~@def-bindings
-               ~@fn-bindings
-               -main# ~main-fn-value]
-           (-main# board#))))
+    (if (and (coll? exprs) (coll? (first exprs)))
+      (wrap-forms-in-lambda exprs)
+      (wrap-forms-in-lambda [exprs]))
     ;user created a single lamda, not need to wrap
      exprs ))
 
@@ -507,7 +521,7 @@
 ;;(parse-error? {:result :not-valid-clojure-form})
 
 (defn validate-fn [src]
-  (let [form (wrap-exprs-in-lambda (validate-read-string src))]
+  (let [form (validate-format (validate-read-string src))]
     (if (parse-error? form)
       form
       (let [{res-validation :result :as val-form} (validate-form form)]

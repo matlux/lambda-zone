@@ -957,7 +957,7 @@
 
 (comment
                                         ;TODO create a test
-  (lz/wrap-exprs-in-lambda '(
+  (lz/validate-format '(
                           (def a 12)
                           (defn b [c] (+ a c))
                           (defn random-f
@@ -991,7 +991,7 @@
 
 (comment
 ;TODO create a test
-  (lz/find-defn-exprs-less-main '( (def a 1) (defn b [] (+ 1 1)) (defn -main [] (b)) (defn f [a b] (+ a b))))
+  (lz/find-defn-forms-less-main '( (def a 1) (defn b [] (+ 1 1)) (defn -main [] (b)) (defn f [a b] (+ a b))))
 
   )
 
@@ -1004,7 +1004,7 @@
 
 (comment
   (lz/validate-form
-   (lz/wrap-exprs-in-lambda
+   (lz/validate-format
     (read-string "((def a 12)
                           (defn b [c] (+ a c))
                           (defn random-f
