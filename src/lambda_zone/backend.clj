@@ -318,6 +318,8 @@
 )
 
 
+(defn not-lambda-expression? [[fn-exp &rest]]
+  (and (not= fn-exp 'fn) (not= fn-exp 'fn*) (not= fn-exp 'clojure.core/fn)))
 
 (defn all-available-functions [db]
   (getAllFunctions db))
@@ -374,6 +376,73 @@
 ;(str @database)
 
 
+(defn extract-binding [[_ name & rest]]
+  [(symbol name) (first  rest)])
+
+;todo handle funcs with comment string!
+(defn extract-fn-binding [[_ name args & body]]
+  [(symbol name) `(fn [~@args] ~(first body))])
+
+(defn is-defn-form? [[head &rest]]
+  (= head 'defn))
+
+(defn is-def-form? [[head &rest]]
+  (= head 'def))
+
+(defn is-main-form? [[first second & rest]]
+  (= second '-main))
+
+(defn find-def-forms [forms]
+  (filter is-def-form? forms))
+
+(defn find-defn-forms [forms]
+  (filter is-defn-form? forms))
+
+
+(defn find-main [forms]
+  (let [defn-forms (find-defn-forms forms)]
+    (if-let [main-named-fn (seq (filter is-main-form? forms))]
+      (first main-named-fn)
+      (last defn-forms))))
+
+(defn extract-main-binding [main-fn]
+  (second
+   (if (is-defn-form? main-fn)
+             (extract-fn-binding main-fn)
+             (extract-binding main-fn))))
+
+
+(defn find-defn-forms-less-main [forms]
+  (->> forms
+      (find-defn-forms)
+      (filter (complement is-main-form?))))
+
+(defn find-def-forms-less-main [forms]
+  (->> forms
+       (find-def-forms)
+       (filter (complement is-main-form?))))
+
+
+(defn wrap-forms-in-lambda [forms]
+  (let [def-forms (find-def-forms-less-main forms)
+        main-fn  (find-main forms)
+        fn-forms-less-main (find-defn-forms-less-main forms)
+        def-bindings (mapcat extract-binding def-forms)
+        fn-bindings (mapcat extract-fn-binding fn-forms-less-main)
+        main-fn-value (extract-main-binding main-fn)]
+    `(fn [board#]
+       (let [~@def-bindings
+             ~@fn-bindings
+             -main# ~main-fn-value]
+         (-main# board#)))))
+
+; we have to check if it's not already a lambda and do nothing then
+(defn validate-code-format [[first & rest :as forms]]
+  (if (not-lambda-expression? first)
+    (wrap-forms-in-lambda forms)
+    ;user created a single lamda, not need to wrap
+     first))
+
 
 
 ;; (defn eval-form-safely [form]
@@ -401,19 +470,23 @@
 (defn parse-error? [form]
   (map? form))
 
+
 (defn validate-form [form]
   (if (coll? form)
     (let [ ;;form (read-string src)
          [fn-exp & sx] form
          [name & sx2] (if (symbol? (first sx)) sx (conj sx nil)  )
          ]
-     (cond (and (not= fn-exp 'fn) (not= fn-exp 'fn*)) {:result "submitted code is not a function" :reason "fn or fn* missing at beginning of function"}
+      (cond (not-lambda-expression? form)
+            {:result "submitted code is not a function" :reason "fn or fn* missing at beginning of function"}
            (or
             (and (list? (first sx2)) (every? #(not (single-param? %)) sx2))
             (not (single-param? (first sx2)))) {:result "function should accept one argument"}
            :else {:result :ok})
      )
     {:result :not-valid-function :reason "define an fn form"}))
+
+
 
 (defn evaluate-and-catch [form]
   (try
@@ -436,6 +509,8 @@
     (catch Throwable e {:result (str "caught exception: " (.getMessage e))})))
 
 
+
+
 (defn validate-read-string [src]
   (try
     (read-string src)
@@ -444,14 +519,16 @@
 ;;(parse-error? {:result :not-valid-clojure-form})
 
 (defn validate-fn [src]
-  (let [form (validate-read-string src)]
+  (let [form (validate-code-format (validate-read-string (str "[" src "]")))]
     (if (parse-error? form)
       form
       (let [{res-validation :result :as val-form} (validate-form form)]
-       (if (= res-validation :ok)
+        (if (= res-validation :ok)
          (validate-compile-exec form)
          val-form)
        ))))
+
+
 
 ;;(validate-fn random-f-src)
 ;;(validate-fn "#(+ 1 1)")
